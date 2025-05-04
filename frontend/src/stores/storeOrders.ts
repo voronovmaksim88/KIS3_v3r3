@@ -193,24 +193,27 @@ export const useOrdersStore = defineStore('orders', () => {
     };
 
     const updateOrder = async (serial: string, orderData: typeOrderEdit): Promise<typeOrderRead | null> => {
-        loading.value = true; // Используем основной флаг
+        loading.value = true;
         error.value = null;
         try {
-            const response = await axios.patch<typeOrderRead>(
+            const response = await axios.patch<typeOrderRead>( // Ответ от PATCH все еще typeOrderRead
                 `${getApiUrl()}order/edit/${serial}`, { order_data: orderData }, { withCredentials: true }
             );
+
+            // Перезапрашиваем список для таблицы
             await fetchOrders({ skip: currentSkip.value, limit: currentLimit.value });
+
+            // Если текущий открытый заказ - это тот, что мы обновили, перезапрашиваем его детали
             if (currentOrderDetail.value?.serial === serial) {
-                // Обновляем детали из ответа или перезапрашиваем
-                currentOrderDetail.value = { ...currentOrderDetail.value, ...response.data };
-                // await fetchOrderDetail(serial); // Альтернатива
+                await fetchOrderDetail(serial); // <--- Запрашиваем полные детали заново
             }
-            return response.data;
+
+            return response.data; // Возвращаем ответ от PATCH (если он нужен вызывающей стороне)
         } catch (err) {
             handleAxiosError(err, `Failed to update order ${serial}`);
-            throw err;
+            throw err; // Пробрасываем ошибку дальше
         } finally {
-            loading.value = false; // Сбрасываем основной флаг
+            loading.value = false;
         }
     };
 
@@ -277,8 +280,8 @@ export const useOrdersStore = defineStore('orders', () => {
         // --- Флаги загрузки ---
         loading,          // Основной
         detailLoading,    // Детали
-        newSerialLoading, // <<< НОВЫЙ ФЛАГ СОСТОЯНИЯ
-        serialsLoading,   // <<< НОВЫЙ ФЛАГ СОСТОЯНИЯ
+        newSerialLoading, // <<< ФЛАГ СОСТОЯНИЯ
+        serialsLoading,   // <<< ФЛАГ СОСТОЯНИЯ
 
         // Действия (Actions)
         fetchOrders, fetchOrderDetail, fetchNewOrderSerial, fetchOrderSerials,
