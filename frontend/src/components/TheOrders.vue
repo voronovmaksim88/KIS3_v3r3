@@ -625,12 +625,14 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                       :label="'Поиск'"
                       severity="secondary"
                       :disabled="'true'"
+                      raised
                       class="mr-2"
                   />
                   <Button
                       @click="addNewOrder"
                       :label="'Добавить'"
                       severity="primary"
+                      raised
                   />
                 </span>
             </div>
