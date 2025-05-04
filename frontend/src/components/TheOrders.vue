@@ -595,12 +595,12 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
     <div v-if="(!isLoading && !error) || (isLoading && orders.length > 0)" class="w-full">
       <table :class="tableBaseClass">
         <colgroup>
-          <col style="width: 7%">
-          <col style="width: 21%">
+          <col style="width: 9%">
+          <col style="width: 24%">
           <col style="width: 7%">
           <col style="width: 25%">
           <col style="width: 15%">
-          <col style="width: 25%">
+          <col style="width: 20%">
         </colgroup>
         <thead>
         <tr>
