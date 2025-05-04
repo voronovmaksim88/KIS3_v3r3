@@ -1,6 +1,5 @@
-<!-- OrderCommentCreateForm.vue -->
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import {reactive, computed, ref, onMounted, nextTick} from 'vue'
 import { useCommentStore } from '@/stores/storeComments'
 import { useToast } from 'primevue/usetoast'
 import BaseModal from '@/components/BaseModal.vue'
@@ -34,6 +33,9 @@ const errors = reactive({
 
 // Состояние загрузки
 const loading = computed(() => commentStore.status === 'loading')
+
+// Ref для поля ввода
+const commentInput = ref<typeof InputText>()
 
 // Валидация формы
 const validateForm = (): boolean => {
@@ -89,6 +91,15 @@ const handleCancelClick = () => {
   errors.text = ''
   emit('cancel')
 }
+
+// Установка фокуса при монтировании
+onMounted(async () => {
+  await nextTick() // Ждем, пока компонент будет отрендерен
+  const inputElement = document.getElementById('comment-text') as HTMLInputElement
+  if (inputElement) {
+    inputElement.focus()
+  }
+})
 </script>
 
 <template>
@@ -113,6 +124,7 @@ const handleCancelClick = () => {
               placeholder="Введите текст комментария"
               autocomplete="off"
               :disabled="loading"
+              ref="commentInput"
           />
           <small v-if="errors.text" class="p-error block mt-1">{{ errors.text }}</small>
         </div>
