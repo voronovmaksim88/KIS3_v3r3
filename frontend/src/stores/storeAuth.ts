@@ -6,7 +6,7 @@ import { getApiUrl } from '../utils/apiUrlHelper';
 // Добавляем интерфейс для пользователя
 interface User {
     username: string;
-    // другие поля пользователя, если они есть
+    id: number;
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', {
     // Добавляем геттеры
     getters: {
         username: (state) => state.user ? state.user.username : '',
+        userId: (state) => state.user?.id || null, // Геттер для ID пользователя
         apiUrl: () => getApiUrl()
     },
 
