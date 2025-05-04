@@ -304,7 +304,7 @@ class OrderComment(Base):
     moment_of_creation: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.now,
                                                                    nullable=True)  # Дата и время публикации комментария
     text: Mapped[str] = mapped_column(Text, nullable=False)  # Текст комментария
-    person_uuid: Mapped[int] = mapped_column(ForeignKey('people.uuid'), nullable=False)  # Автор комментария
+    person_uuid: Mapped[uuid.UUID] = mapped_column(ForeignKey('people.uuid'), nullable=False)  # Автор комментария
 
     # relations
     order: Mapped["Order"] = relationship(back_populates="comments")
