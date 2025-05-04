@@ -3,7 +3,7 @@
 import {computed, ref} from 'vue';
 import {formatFIO} from "@/utils/formatFIO.ts";
 import Button from "primevue/button";
-import CommentCreateForm from '@/components/OrderCommentCreateForm.vue'
+import OrderCommentCreateForm from '@/components/OrderCommentCreateForm.vue'
 
 // Определение типа для комментария
 interface Comment {
@@ -129,12 +129,22 @@ function handleCommentSuccess(){
 </script>
 
 <template>
-  <CommentCreateForm
-      v-if="showCommentModal"
-      :order-id="'095-05-2025'"
-      @success="handleCommentSuccess"
-      @cancel="showCommentModal = false"
-  />
+
+  <!-- Модальное окно создания коммента -->
+  <transition name="fade">
+    <div
+        v-if="showCommentModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="max-w-4xl w-full">
+        <OrderCommentCreateForm
+            :order-id="'095-05-2025'"
+            @success="handleCommentSuccess"
+            @cancel="showCommentModal = false"
+        />
+      </div>
+    </div>
+  </transition>
+
   <div :class="detailBlockClass">
     <h4 :class="detailHeaderClass">Комментарии</h4>
     <div

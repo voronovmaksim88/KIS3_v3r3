@@ -101,7 +101,9 @@ const handleCancelClick = () => {
     <form @submit.prevent="submitForm" class="space-y-4">
       <!-- Текст комментария -->
       <div class="grid grid-cols-[150px_1fr] gap-4 items-start">
-        <label for="comment-text" class="text-sm font-medium pt-2">Текст комментария: <span class="text-red-500">*</span></label>
+        <label for="comment-text" class="text-sm font-medium pt-2">
+          Текст комментария: <span class="text-red-500">*</span>
+        </label>
         <div>
           <InputText
               id="comment-text"
