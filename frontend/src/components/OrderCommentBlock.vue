@@ -1,8 +1,9 @@
 <!-- src/components/OrderCommentBlock.vue -->
 <script setup lang="ts">
-import {computed} from 'vue';
+import {computed, ref} from 'vue';
 import {formatFIO} from "@/utils/formatFIO.ts";
 import Button from "primevue/button";
+import CommentCreateForm from '@/components/OrderCommentCreateForm.vue'
 
 // Определение типа для комментария
 interface Comment {
@@ -22,6 +23,8 @@ const props = defineProps({
     default: 'light'
   }
 });
+
+const showCommentModal = ref(false)
 
 // Вычисляемые стили в зависимости от темы
 const detailBlockClass = computed(() => {
@@ -117,10 +120,21 @@ function formatLocalDateTime(
 
 function addNewComment() {
   console.log('addNewComment');
+  showCommentModal.value = true
+}
+
+function handleCommentSuccess(){
+
 }
 </script>
 
 <template>
+  <CommentCreateForm
+      v-if="showCommentModal"
+      :order-id="'095-05-2025'"
+      @success="handleCommentSuccess"
+      @cancel="showCommentModal = false"
+  />
   <div :class="detailBlockClass">
     <h4 :class="detailHeaderClass">Комментарии</h4>
     <div
