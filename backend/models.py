@@ -137,6 +137,19 @@ class Person(Base):
     can_be_programmer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     can_be_tester: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Внешний ключ на User
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id'),
+        nullable=True,
+        unique=True  # Обеспечивает уникальность связи
+    )
+
+    # Связь один-к-одному с User
+    user: Mapped["User"] = relationship(
+        back_populates="person",
+        uselist=False
+    )
+
     def __repr__(self) -> str:
         return f"Person(id={self.uuid!r}, name={self.name!r}, surname={self.surname!r})"
 
@@ -151,6 +164,8 @@ class Person(Base):
                                 foreign_keys="[BoxAccounting.tester_id]")
     timing_records = relationship("Timing", back_populates="executor",
                                   foreign_keys="[Timing.executor_id]")
+
+
 
 
 # Вспомогательная таблица для связи многие-ко-многим между Order и Work
@@ -554,6 +569,12 @@ class User(AsyncAttrs, Base):
     )
     last_login: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+    # Связь один-к-одному с Person
+    person: Mapped["Person"] = relationship(
+        back_populates="user",
+        uselist=False  # Обеспечивает 1:1
     )
 
     # # Задачи пользователя
