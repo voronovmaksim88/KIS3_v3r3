@@ -14,6 +14,10 @@ interface Comment {
 
 // Входные свойства компонента
 const props = defineProps({
+  order_serial: {
+    type: String as () => string, // Теперь явно указываем тип string
+    required: true // Делаем поле обязательным
+  },
   comments: {
     type: Array as () => Comment[],
     default: () => []
@@ -122,10 +126,6 @@ function addNewComment() {
   console.log('addNewComment');
   showCommentModal.value = true
 }
-
-function handleCommentSuccess(){
-
-}
 </script>
 
 <template>
@@ -137,8 +137,8 @@ function handleCommentSuccess(){
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="max-w-4xl w-full">
         <OrderCommentCreateForm
-            :order-id="'095-05-2025'"
-            @success="handleCommentSuccess"
+            :orderId="props.order_serial"
+            @success="showCommentModal = false"
             @cancel="showCommentModal = false"
         />
       </div>
