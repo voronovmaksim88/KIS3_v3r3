@@ -14,7 +14,7 @@ import { useOrdersTableStore } from '@/stores/storeOrdersTable'; // Импорт
 
 // мои компоненты
 import OrderCreateForm from '@/components/OrderCreateForm.vue'; // Импорт нашего нового компонента
-import CommentBlock from '@/components/CommentBlock.vue';
+import OrderCommentBlock from '@/components/OrderCommentBlock.vue';
 import TaskList from "@/components/TaskList.vue";
 import FinanceBlock from '@/components/FinanceBlock.vue';
 import DateBlock from '@/components/DateBlock.vue';
@@ -826,7 +826,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
               <div v-else>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                  <CommentBlock
+                  <OrderCommentBlock
                       :comments="currentOrderDetail?.comments"
                       :theme="currentTheme"
                   />

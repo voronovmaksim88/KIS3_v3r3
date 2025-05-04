@@ -1,6 +1,8 @@
+<!-- src/components/OrderCommentBlock.vue -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { formatFIO } from "@/utils/formatFIO.ts";
+import {computed} from 'vue';
+import {formatFIO} from "@/utils/formatFIO.ts";
+import Button from "primevue/button";
 
 // Определение типа для комментария
 interface Comment {
@@ -112,6 +114,10 @@ function formatLocalDateTime(
     return isoDateString; // Возвращаем исходную строку в случае ошибки
   }
 }
+
+function addNewComment() {
+  console.log('addNewComment');
+}
 </script>
 
 <template>
@@ -140,5 +146,15 @@ function formatLocalDateTime(
         <div class="mt-1" :class="tdBaseTextClass">{{ comment.text }}</div>
       </div>
     </div>
+
+    <!-- Контейнер для кнопки -->
+    <div class="flex justify-end mt-3">
+      <Button
+          @click="addNewComment"
+          label="Добавить"
+          severity="primary"
+      />
+    </div>
+
   </div>
 </template>
