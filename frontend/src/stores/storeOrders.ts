@@ -290,10 +290,10 @@ export const useOrdersStore = defineStore('orders', () => {
         resetOrders, resetOrderDetail, resetOrderSerials, resetSorting,
 
         // Вычисляемые свойства (Getters/Computed)
-        isLoading,          // Основной
+        isLoading,          // Основной флаг загрузки
         isDetailLoading,    // Детали
-        isNewSerialLoading, // <<< НОВОЕ COMPUTED СВОЙСТВО
-        isSerialsLoading,   // <<< НОВОЕ COMPUTED СВОЙСТВО
+        isNewSerialLoading, //
+        isSerialsLoading,   //
         hasOrderDetail, currentPage, totalPages, serialsCount,
     };
 });

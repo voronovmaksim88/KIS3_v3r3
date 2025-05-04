@@ -17,7 +17,7 @@ import OrderCreateForm from '@/components/OrderCreateForm.vue'; // Импорт 
 import OrderCommentBlock from '@/components/OrderCommentBlock.vue';
 import TaskList from "@/components/TaskList.vue";
 import FinanceBlock from '@/components/FinanceBlock.vue';
-import DateBlock from '@/components/DateBlock.vue';
+import OrderDateBlock from '@/components/OrderDateBlock.vue';
 import OrderNameEditDialog from '@/components/OrderNameEditDialog.vue'; // Импорт нового компонента диалога
 import OrderWorksEditDialog from '@/components/OrderWorksEditDialog.vue'; // <-- Импорт нового компонента
 
@@ -837,7 +837,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                   <div class="flex flex-col gap-4">
 
                     <!-- Блок с датами -->
-                    <DateBlock
+                    <OrderDateBlock
                         :order="currentOrderDetail"
                         :theme="currentTheme"
                         :detailBlockClass="detailBlockClass"

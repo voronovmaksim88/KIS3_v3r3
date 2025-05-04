@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import DatePicker from 'primevue/datepicker';
+import { useOrdersStore } from '@/stores/storeOrders';
+import { useToast } from 'primevue/usetoast';
 
 // Определение типа входных данных для компонента
 interface DateData {
   start_moment?: string | null;
   deadline_moment?: string | null;
   end_moment?: string | null;
+  serial?: string; // Добавляем serial для идентификации заказа при обновлении
 }
 
 // Определяем пропсы для компонента через деструктуризацию
@@ -16,6 +20,91 @@ const props = defineProps<{
   detailHeaderClass: string;
   tdBaseTextClass: string;
 }>();
+
+// Добавляем emit событие для обновления даты дедлайна
+const emit = defineEmits(['updateDeadline']);
+
+// Получаем доступ к хранилищу и toast уведомлениям
+const ordersStore = useOrdersStore();
+const toast = useToast();
+
+// Флаг для отслеживания режима редактирования
+const isEditing = ref(false);
+
+// Временная переменная для хранения новой даты дедлайна при редактировании
+const tempDeadline = ref<Date | null>(null);
+
+// Функция для включения режима редактирования
+const startEditing = () => {
+  if (props.order?.deadline_moment) {
+    tempDeadline.value = new Date(props.order.deadline_moment);
+  } else {
+    tempDeadline.value = null;
+  }
+  isEditing.value = true;
+};
+
+// Функция для отмены редактирования
+const cancelEditing = () => {
+  isEditing.value = false;
+  tempDeadline.value = null;
+};
+
+// Функция для сохранения изменений в БД
+const saveDeadline = async () => {
+  if (!props.order?.serial) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось определить заказ для обновления',
+      life: 3000
+    });
+    isEditing.value = false;
+    return;
+  }
+
+  try {
+    // Формируем объект для обновления заказа
+    const orderData = {
+      deadline_moment: tempDeadline.value ? tempDeadline.value.toISOString() : null
+    };
+
+    // Вызываем метод обновления из хранилища
+    await ordersStore.updateOrder(props.order.serial, orderData);
+
+    // Эмитим событие для родительского компонента (если нужно)
+    emit('updateDeadline', tempDeadline.value ? tempDeadline.value.toISOString() : null);
+
+    // Показываем уведомление об успешном обновлении
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: tempDeadline.value
+          ? `Дедлайн обновлен на ${formatLocalDateTime(tempDeadline.value.toISOString(), false)}`
+          : 'Дедлайн удален',
+      life: 3000
+    });
+
+    // Выходим из режима редактирования
+    isEditing.value = false;
+
+  } catch (error) {
+    // Показываем сообщение об ошибке
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: ordersStore.error || 'Не удалось обновить дедлайн',
+      life: 5000
+    });
+  }
+};
+
+// Минимальная допустимая дата (сегодня)
+const today = computed(() => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+});
 
 /**
  * Преобразует строку даты в формате ISO 8601 в локальную дату и время
@@ -55,7 +144,7 @@ function formatLocalDateTime(
     const day = String(date.getDate()).padStart(2, '0');
 
     // Формируем строку с датой
-    let formattedDate = `${year}-${month}-${day}`;
+    let formattedDate = `${day}-${month}-${year}`;
 
     // Добавляем часы и минуты, если необходимо
     if (includeHourAndMinute) {
@@ -77,7 +166,7 @@ function formatLocalDateTime(
   }
 }
 
-// --- Новые функции для расчета разницы и форматирования ---
+// --- Остальной код без изменений ---
 
 interface DateDifference {
   years: number;
@@ -228,10 +317,13 @@ const isDeadlineOverdue = computed(() => {
   return timeUntilDeadline.value !== null && timeUntilDeadline.value.totalDays < 0;
 });
 
+// Состояние загрузки из хранилища
+const isLoading = computed(() => ordersStore.isLoading);
 </script>
 
 <template>
   <div :class="detailBlockClass">
+    <Toast />
     <h4 :class="detailHeaderClass">Даты</h4>
 
     <table class="w-full border-none table-fixed border-collapse">
@@ -254,7 +346,49 @@ const isDeadlineOverdue = computed(() => {
           дедлайн:
         </td>
         <td :class="[tdBaseTextClass, 'text-left align-top']">
-          {{ formatLocalDateTime(props.order?.deadline_moment, false) || 'не определено' }}
+
+          <template v-if="!isEditing">
+            {{ formatLocalDateTime(props.order?.deadline_moment, false) || 'не определено' }}
+            <button
+                @click="startEditing"
+                class="ml-2 text-blue-500 hover:text-blue-700 text-xs edit-btn"
+                title="Редактировать дедлайн"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+          </template>
+
+          <template v-else>
+            <div class="edit-container">
+              <DatePicker
+                  v-model="tempDeadline"
+                  dateFormat="dd.mm.yy"
+                  placeholder="Выберите дату"
+                  :showIcon="true"
+                  :minDate="today"
+                  class="deadline-picker"
+                  :disabled="isLoading"
+              />
+              <div class="edit-actions">
+                <button
+                    @click="saveDeadline"
+                    class="text-green-500 hover:text-green-700 edit-btn"
+                    title="Сохранить"
+                    :disabled="isLoading"
+                >
+                  <i class="pi" :class="isLoading ? 'pi-spinner pi-spin' : 'pi-check'"></i>
+                </button>
+                <button
+                    @click="cancelEditing"
+                    class="text-red-500 hover:text-red-700 edit-btn"
+                    title="Отменить"
+                    :disabled="isLoading"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            </div>
+          </template>
         </td>
         <td
             v-if="timeUntilDeadline !== null"
@@ -313,12 +447,54 @@ table td {
 
 
 table td:nth-child(1) { width: 20%; }
-table td:nth-child(2) { width: 20%; }
-table td:nth-child(3) { width: 60%; }
+table td:nth-child(2) { width: 45%; }
+table td:nth-child(3) { width: 35%; }
 
 /* Добавил класс для пустой ячейки, чтобы она не коллапсировала */
 .w-px {
   width: 1px;
 }
 
+/* Стили для редактирования дедлайна */
+.edit-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.edit-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.deadline-picker {
+  width: 100%;
+  max-width: 150px;
+}
+
+/* Адаптивное отображение для больших экранов */
+@media (min-width: 640px) {
+  .edit-container {
+    flex-direction: row;
+    align-items: center;
+  }
+}
 </style>
