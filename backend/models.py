@@ -118,7 +118,6 @@ class Person(Base):
     """Люди - сотрудники, представители заказчиков и т.д."""
     __tablename__ = 'people'
 
-    # id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     uuid = Column(UUID(as_uuid=True), primary_key=True, unique=True, nullable=False, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String, nullable=True)  # Отчество
