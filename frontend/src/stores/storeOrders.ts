@@ -111,6 +111,7 @@ export const useOrdersStore = defineStore('orders', () => {
         }
     };
 
+    // Получение всех данных об одном заказе
     const fetchOrderDetail = async (serial: string) => {
         detailLoading.value = true; // Используем флаг деталей
         error.value = null;

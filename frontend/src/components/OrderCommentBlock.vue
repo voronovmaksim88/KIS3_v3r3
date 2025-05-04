@@ -4,6 +4,7 @@ import {computed, ref} from 'vue';
 import {formatFIO} from "@/utils/formatFIO.ts";
 import Button from "primevue/button";
 import OrderCommentCreateForm from '@/components/OrderCommentCreateForm.vue'
+import {useOrdersStore} from '../stores/storeOrders';
 
 // Определение типа для комментария
 interface Comment {
@@ -29,6 +30,12 @@ const props = defineProps({
 });
 
 const showCommentModal = ref(false)
+
+// Store для заказов
+const ordersStore = useOrdersStore();
+
+// Действия можно извлекать напрямую
+const {fetchOrderDetail} = ordersStore;
 
 // Вычисляемые стили в зависимости от темы
 const detailBlockClass = computed(() => {
@@ -126,6 +133,16 @@ function addNewComment() {
   console.log('addNewComment');
   showCommentModal.value = true
 }
+
+async function handleSuccess() {
+  try {
+    await fetchOrderDetail(props.order_serial)
+  } catch (error) {
+    console.error('Ошибка при обновлении данных заказа:', error)
+  } finally {
+    showCommentModal.value = false
+  }
+}
 </script>
 
 <template>
@@ -138,7 +155,7 @@ function addNewComment() {
       <div class="max-w-4xl w-full">
         <OrderCommentCreateForm
             :orderId="props.order_serial"
-            @success="showCommentModal = false"
+            @success="handleSuccess"
             @cancel="showCommentModal = false"
         />
       </div>
