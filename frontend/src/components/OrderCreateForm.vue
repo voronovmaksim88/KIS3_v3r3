@@ -6,7 +6,7 @@ import {useOrdersStore} from '@/stores/storeOrders';
 import {useCounterpartyStore} from '@/stores/storeCounterparty'; // Импортируем store контрагентов
 import {useToast} from 'primevue/usetoast';
 import BaseModal from '@/components/BaseModal.vue';
-import { useWorksStore } from "@/stores/storeWorks";
+import {useWorksStore} from "@/stores/storeWorks";
 import {getStatusColor} from "@/utils/getStatusColor";
 
 // PrimeVue компоненты
@@ -16,8 +16,6 @@ import Toast from 'primevue/toast';
 import Select from 'primevue/select'; // Импортируем компонент выпадающего списка
 import DatePicker from 'primevue/datepicker';
 import MultiSelect from 'primevue/multiselect';
-
-
 
 
 const emit = defineEmits(['cancel', 'success']);
@@ -138,12 +136,23 @@ const submitForm = async () => {
     const customer = counterpartyStore.getCounterpartyById(customerId);
     const customerName = customer ? counterpartyStore.getFullName(customer) : 'выбранный заказчик';
 
+
+    if (!createdOrder) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: 'Не удалось создать заказ',
+      });
+      return;
+    }
+
     toast.add({
       severity: 'success',
       summary: 'Заказ создан',
       detail: `Заказ "${createdOrder.name}" для ${customerName} успешно создан`,
       life: 4000
     });
+
 
     // Сбрасываем форму
     formData.name = '';
@@ -230,7 +239,7 @@ const getCustomerNameById = (id: number): string => {
         <label for="o-serial" class="text-sm font-medium pt-2">Серийный номер:</label>
         <div>
           <div v-if="!formData.serial" class="flex items-center w-full">
-            <Select placeholder="Загрузка..." loading class="w-full" />
+            <Select placeholder="Загрузка..." loading class="w-full"/>
           </div>
           <InputText
               v-else
@@ -243,7 +252,8 @@ const getCustomerNameById = (id: number): string => {
         </div>
 
         <!-- Название заказа -->
-        <label for="o-name" class="text-sm font-medium pt-2">Название заказа: <span class="text-red-500">*</span></label>
+        <label for="o-name" class="text-sm font-medium pt-2">Название заказа: <span
+            class="text-red-500">*</span></label>
         <div>
           <InputText
               id="o-name"
@@ -260,7 +270,7 @@ const getCustomerNameById = (id: number): string => {
         <label for="o-name" class="text-sm font-medium pt-2">Заказчик: <span class="text-red-500">*</span></label>
         <div>
           <div v-if="loadingCounterparties" class="flex items-center">
-            <Select placeholder="Загрузка..." loading class="w-full" />
+            <Select placeholder="Загрузка..." loading class="w-full"/>
           </div>
 
           <Select
@@ -386,7 +396,7 @@ const getCustomerNameById = (id: number): string => {
           </div>
 
 
-          </div>
+        </div>
 
         <!-- Выбор работ -->
         <label for="o-works" class="text-sm font-medium pt-2">Работы по заказу:</label>
