@@ -47,14 +47,7 @@ class OrderBase(BaseModel):
     start_moment: Optional[datetime] = None
     deadline_moment: Optional[datetime] = None
     end_moment: Optional[datetime] = None
-    materials_cost: Optional[int] = None
-    materials_paid: bool = False
-    products_cost: Optional[int] = None
-    products_paid: bool = False
-    work_cost: Optional[int] = None
-    work_paid: bool = False
-    debt: Optional[int] = None
-    debt_paid: bool = False
+
 
     @field_validator('priority')
     def validate_priority(cls, v):  # noqa
@@ -91,12 +84,16 @@ class OrderRead(BaseModel):
     deadline_moment: Optional[datetime] = None
     end_moment: Optional[datetime] = None
     materials_cost: Optional[int] = None
+    materials_cost_fact: Optional[int] = None
     materials_paid: bool
     products_cost: Optional[int] = None
+    products_cost_fact: Optional[int] = None
     products_paid: bool
     work_cost: Optional[int] = None
+    work_cost_fact: Optional[int] = None
     work_paid: bool
     debt: Optional[int] = None
+    debt_fact: Optional[int] = None
     debt_paid: bool
     works: List[WorkSchema] = []  # Список работ, по умолчанию пустой
 
