@@ -24,14 +24,6 @@ export interface typeOrderRead {
     start_moment: string | null; // Даты приходят как строки ISO 8601
     deadline_moment: string | null;
     end_moment: string | null;
-    materials_cost: number | null;
-    materials_paid: boolean;
-    products_cost: number | null;
-    products_paid: boolean;
-    work_cost: number | null;
-    work_paid: boolean;
-    debt: number | null;
-    debt_paid: boolean;
     works: typeWork[]; // Добавленное поле для списка работ
 }
 
@@ -90,12 +82,16 @@ export interface typeOrderDetail {
     deadline_moment: string | null;
     end_moment: string | null;
     materials_cost: number | null;
+    materials_cost_fact: number | null;
     materials_paid: boolean;
     products_cost: number | null;
+    products_cost_fact: number | null;
     products_paid: boolean;
     work_cost: number | null;
+    work_cost_fact: number | null;
     work_paid: boolean;
     debt: number | null;
+    debt_fact: number | null;
     debt_paid: boolean;
     works: typeOrderWork[];
     comments: typeOrderComment[];
@@ -133,12 +129,16 @@ export interface typeOrderEdit {
     deadline_moment?: string | null;
     end_moment?: string | null;
     materials_cost?: number | null;
+    materials_cost_fact?: number | null;
     materials_paid?: boolean;
     products_cost?: number | null;
+    products_cost_fact?: number | null;
     products_paid?: boolean;
     work_cost?: number | null;
+    work_cost_fact?: number | null;
     work_paid?: boolean;
     debt?: number | null;
+    debt_fact?: number | null;
     debt_paid?: boolean;
     work_ids?: number[];
 }
