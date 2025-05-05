@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import {computed, ref, watch} from 'vue';
 import DatePicker from 'primevue/datepicker';
-import { useOrdersStore } from '@/stores/storeOrders';
-import { useToast } from 'primevue/usetoast';
+import {useOrdersStore} from '@/stores/storeOrders';
+import {useToast} from 'primevue/usetoast';
 
 // Определение типа входных данных для компонента
 interface DateData {
@@ -28,28 +28,13 @@ const emit = defineEmits(['updateDeadline']);
 const ordersStore = useOrdersStore();
 const toast = useToast();
 
-// Флаг для отслеживания режима редактирования
-const isEditing = ref(false);
-
 // Временная переменная для хранения новой даты дедлайна при редактировании
-const tempDeadline = ref<Date | null>(null);
-
-// Функция для включения режима редактирования
-const startEditing = () => {
-  if (props.order?.deadline_moment) {
-    tempDeadline.value = new Date(props.order.deadline_moment);
-    tempDeadline.value.setHours(0, 0, 0, 0); // Обнуляем время
-  } else {
-    tempDeadline.value = null;
-  }
-  isEditing.value = true;
-};
-
-// Функция для отмены редактирования
-const cancelEditing = () => {
-  isEditing.value = false;
-  tempDeadline.value = null;
-};
+// Переменная для хранения даты дедлайна
+const tempDeadline = ref<Date | null>(props.order?.deadline_moment ? new Date(props.order.deadline_moment) : null);
+// Устанавливаем начальное время на 00:00:00 если есть дата
+if (tempDeadline.value) {
+  tempDeadline.value.setHours(0, 0, 0, 0);
+}
 
 // Функция для сохранения изменений в БД
 const saveDeadline = async () => {
@@ -60,7 +45,6 @@ const saveDeadline = async () => {
       detail: 'Не удалось определить заказ для обновления',
       life: 3000
     });
-    isEditing.value = false;
     return;
   }
 
@@ -92,9 +76,6 @@ const saveDeadline = async () => {
       life: 3000
     });
 
-    // Выходим из режима редактирования
-    isEditing.value = false;
-
   } catch (error) {
     // Показываем сообщение об ошибке
     toast.add({
@@ -105,6 +86,20 @@ const saveDeadline = async () => {
     });
   }
 };
+
+// Вызываем saveDeadline при изменении tempDeadline
+watch(tempDeadline, (newValue, oldValue) => {
+  // Проверяем, что значение действительно изменилось
+  if (newValue !== oldValue && (
+      // Проверяем случаи: было null стало Date, было Date стало null,
+      // или даты разные (сравниваем по timestamp)
+      (newValue === null && oldValue !== null) ||
+      (newValue !== null && oldValue === null) ||
+      (newValue !== null && oldValue !== null && newValue.getTime() !== oldValue.getTime())
+  )) {
+    saveDeadline();
+  }
+}, {deep: true});
 
 // Минимальная допустимая дата (сегодня)
 const today = computed(() => {
@@ -218,7 +213,7 @@ function calculateDateDifference(date1: Date, date2: Date): DateDifference {
 
   // Если даты были переданы в обратном порядке, totalDays будет отрицательным
   // years, months, days всегда положительны или 0 из-за startDate/endDate
-  return { years, months, days, totalDays };
+  return {years, months, days, totalDays};
 }
 
 // Вспомогательные функции для склонения слов
@@ -330,7 +325,7 @@ const isLoading = computed(() => ordersStore.isLoading);
 
 <template>
   <div :class="detailBlockClass">
-    <Toast />
+    <Toast/>
     <h4 :class="detailHeaderClass">Даты</h4>
 
     <table class="w-full border-none table-fixed border-collapse">
@@ -342,7 +337,8 @@ const isLoading = computed(() => ordersStore.isLoading);
         <td :class="tdBaseTextClass" class="text-left align-top">
           {{ formatLocalDateTime(props.order?.start_moment, false) || 'не определено' }}
         </td>
-        <td v-if="timeSinceCreation && (timeSinceCreation.years > 0 || timeSinceCreation.months > 0 || timeSinceCreation.days > 0)" class="text-xs text-gray-500 pl-2 text-left align-top">
+        <td v-if="timeSinceCreation && (timeSinceCreation.years > 0 || timeSinceCreation.months > 0 || timeSinceCreation.days > 0)"
+            class="text-xs text-gray-500 pl-2 text-left align-top">
           ({{ formatRelativeTimeDetailed(timeSinceCreation) }} назад)
         </td>
         <td v-else class="w-px"></td>
@@ -354,49 +350,23 @@ const isLoading = computed(() => ordersStore.isLoading);
         </td>
         <td :class="[tdBaseTextClass, 'text-left align-top']">
 
-          <template v-if="!isEditing">
-            {{ formatLocalDateTime(props.order?.deadline_moment, false) || 'не определено' }}
-            <button
-                @click="startEditing"
-                class="ml-2 text-blue-500 hover:text-blue-700 text-xs edit-btn"
-                title="Редактировать дедлайн"
-            >
-              <i class="pi pi-pencil"></i>
-            </button>
-          </template>
-
-          <template v-else>
-            <div class="edit-container">
-              <DatePicker
-                  v-model="tempDeadline"
-                  dateFormat="dd.mm.yy"
-                  placeholder="Выберите дату"
-                  :showIcon="true"
-                  :minDate="today"
-                  class="deadline-picker"
-                  :disabled="isLoading"
-              />
-              <div class="edit-actions">
-                <button
-                    @click="saveDeadline"
-                    class="text-green-500 hover:text-green-700 edit-btn"
-                    title="Сохранить"
-                    :disabled="isLoading"
-                >
-                  <i class="pi" :class="isLoading ? 'pi-spinner pi-spin' : 'pi-check'"></i>
-                </button>
-                <button
-                    @click="cancelEditing"
-                    class="text-red-500 hover:text-red-700 edit-btn"
-                    title="Отменить"
-                    :disabled="isLoading"
-                >
-                  <i class="pi pi-times"></i>
-                </button>
-              </div>
+          <div class="relative">
+            <DatePicker
+                v-model="tempDeadline"
+                dateFormat="dd.mm.yy"
+                placeholder="Выберите дату"
+                :showIcon="true"
+                :minDate="today"
+                class="deadline-picker"
+                :disabled="isLoading"
+            />
+            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
+              <i class="pi pi-spinner pi-spin text-blue-500"></i>
             </div>
-          </template>
+          </div>
+
         </td>
+
         <td
             v-if="timeUntilDeadline !== null"
             class="text-xs pl-2 text-left align-top"
@@ -422,7 +392,8 @@ const isLoading = computed(() => ordersStore.isLoading);
         <td :class="tdBaseTextClass" class="text-left align-top">
           {{ formatLocalDateTime(props.order?.end_moment, false) || 'не определено' }}
         </td>
-        <td v-if="timeSinceCompletion && (timeSinceCompletion.years > 0 || timeSinceCompletion.months > 0 || timeSinceCompletion.days > 0)" class="text-xs text-gray-500 pl-2 text-left align-top">
+        <td v-if="timeSinceCompletion && (timeSinceCompletion.years > 0 || timeSinceCompletion.months > 0 || timeSinceCompletion.days > 0)"
+            class="text-xs text-gray-500 pl-2 text-left align-top">
           ({{ formatRelativeTimeDetailed(timeSinceCompletion) }} назад)
         </td>
         <td v-else class="w-px"></td>
@@ -436,8 +407,6 @@ const isLoading = computed(() => ordersStore.isLoading);
 table {
   border: none;
   border-collapse: collapse;
-  /* table-layout: fixed; /* Убедитесь, что используется fixed layout */
-  /* width: 100%; Если нужно на всю ширину */
 }
 
 table tr {
@@ -453,55 +422,33 @@ table td {
 }
 
 
-table td:nth-child(1) { width: 20%; }
-table td:nth-child(2) { width: 45%; }
-table td:nth-child(3) { width: 35%; }
+table td:nth-child(1) {
+  width: 20%;
+}
+
+table td:nth-child(2) {
+  width: 45%;
+}
+
+table td:nth-child(3) {
+  width: 35%;
+}
 
 /* Добавил класс для пустой ячейки, чтобы она не коллапсировала */
 .w-px {
   width: 1px;
 }
 
-/* Стили для редактирования дедлайна */
-.edit-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 2px 4px;
-  font-size: 0.75rem;
-  border-radius: 4px;
-}
-
-.edit-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.edit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.edit-container {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 4px;
-}
-
+/* Добавьте эту строку в секцию <style scoped> */
 .deadline-picker {
-  width: 100%;
-  max-width: 150px;
+  width: auto;
+  max-width: 180px; /* Ограничивает максимальную ширину */
 }
 
-/* Адаптивное отображение для больших экранов */
-@media (min-width: 640px) {
-  .edit-container {
-    flex-direction: row;
-    align-items: center;
-  }
+/* Также можно добавить стили для контейнера DatePicker */
+.relative {
+  display: inline-block; /* Чтобы контейнер не растягивался на всю ширину */
 }
+
+
 </style>
