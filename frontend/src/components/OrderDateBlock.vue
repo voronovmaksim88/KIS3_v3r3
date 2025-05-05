@@ -38,6 +38,7 @@ const tempDeadline = ref<Date | null>(null);
 const startEditing = () => {
   if (props.order?.deadline_moment) {
     tempDeadline.value = new Date(props.order.deadline_moment);
+    tempDeadline.value.setHours(0, 0, 0, 0); // Обнуляем время
   } else {
     tempDeadline.value = null;
   }
