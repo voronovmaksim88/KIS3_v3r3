@@ -67,7 +67,13 @@ const saveDeadline = async () => {
   try {
     // Формируем объект для обновления заказа
     const orderData = {
-      deadline_moment: tempDeadline.value ? tempDeadline.value.toISOString() : null
+      deadline_moment: tempDeadline.value
+          ? new Date(Date.UTC(
+              tempDeadline.value.getFullYear(),
+              tempDeadline.value.getMonth(),
+              tempDeadline.value.getDate()
+          )).toISOString()
+          : null
     };
 
     // Вызываем метод обновления из хранилища
