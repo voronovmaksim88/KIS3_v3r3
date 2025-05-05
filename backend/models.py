@@ -250,12 +250,19 @@ class Order(Base):
     Так же фиксируем сколько клиент денег должен ещё нам. 
     """
     materials_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость материалов плановая
+    materials_cost_fact: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость материалов плановая
     materials_paid: Mapped[bool] = mapped_column(Boolean, default=False)  # Материалы оплачены
+
     products_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость материалов плановая
+    products_cost_fact: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость материалов плановая
     products_paid: Mapped[bool] = mapped_column(Boolean, default=False)  # Товары оплачены
+
     work_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость работ плановая
+    work_cost_fact: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Стоимость работ плановая
     work_paid: Mapped[bool] = mapped_column(Boolean, default=False)  # Работы оплачены
+
     debt: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Задолженность нам
+    debt_fact: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Задолженность нам
     debt_paid: Mapped[bool] = mapped_column(Boolean, default=False)  # Задолженность оплачена
 
     @validates('priority')

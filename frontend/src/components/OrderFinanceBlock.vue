@@ -1,4 +1,4 @@
-<!-- src/components/FinanceBlock.vue -->
+<!-- src/components/OrderFinanceBlock.vue -->
 <script setup lang="ts">
 
 // Определение интерфейса для финансовых данных с поддержкой null
