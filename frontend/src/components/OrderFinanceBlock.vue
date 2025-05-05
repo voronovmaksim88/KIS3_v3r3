@@ -4,12 +4,16 @@
 // Определение интерфейса для финансовых данных с поддержкой null
 interface FinanceData {
   materials_cost?: number | null;
+  materials_cost_fact?: number | null;
   materials_paid?: boolean | null;
   products_cost?: number | null;
+  products_cost_fact?: number | null;
   products_paid?: boolean | null;
   work_cost?: number | null;
+  work_cost_fact?: number | null;
   work_paid?: boolean | null;
   debt?: number | null;
+  debt_fact?: number | null;
   debt_paid?: boolean | null;
 }
 
