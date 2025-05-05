@@ -120,8 +120,17 @@ const submitForm = async () => {
     const customerId = formData.customer_id as number;
 
 // Преобразование Date в строку ISO
-    const deadlineMomentStr = formData.deadline_moment ?
-        formData.deadline_moment.toISOString() : null;
+
+    // const deadlineMomentStr = formData.deadline_moment ?
+    //     formData.deadline_moment.toISOString() : null;
+    //
+    const deadlineMomentStr = formData.deadline_moment
+        ? new Date(Date.UTC(
+            formData.deadline_moment.getFullYear(),
+            formData.deadline_moment.getMonth(),
+            formData.deadline_moment.getDate()
+        )).toISOString()
+        : null;
 
     const createdOrder = await ordersStore.createOrder({
       name: formData.name,
