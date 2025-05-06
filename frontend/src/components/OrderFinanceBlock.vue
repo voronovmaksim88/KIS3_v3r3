@@ -262,6 +262,11 @@ const handleDebtPaidChange = (value: boolean) => {
 
     <div class="overflow-auto">
       <table class="w-full border-collapse">
+        <colgroup>
+          <col style="width: 40%">
+          <col style="width: 30%">
+          <col style="width: 30%">
+        </colgroup>
         <thead>
         <tr>
           <th class="text-left py-2 text-sm text-gray-500 font-medium">Категория</th>
@@ -273,9 +278,9 @@ const handleDebtPaidChange = (value: boolean) => {
         <!-- Материалы -->
         <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
-            <div class="flex items-center">
-              <span>Материалы</span>
-              <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('materials', !materials.paid)">
+            <div class="flex justify-between items-center">
+              <span class="whitespace-nowrap">Материалы</span>
+              <div class="cursor-pointer flex items-center justify-center" @click="handlePaidChange('materials', !materials.paid)">
                 <i class="pi" :class="materials.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
               </div>
             </div>
@@ -311,7 +316,7 @@ const handleDebtPaidChange = (value: boolean) => {
         <!-- Товары -->
         <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
-            <div class="flex items-center">
+            <div class="flex justify-between items-center">
               <span>Товары</span>
               <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('products', !products.paid)">
                 <i class="pi" :class="products.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
@@ -349,7 +354,7 @@ const handleDebtPaidChange = (value: boolean) => {
         <!-- Работы -->
         <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
-            <div class="flex items-center">
+            <div class="flex justify-between items-center">
               <span>Работы</span>
               <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('work', !work.paid)">
                 <i class="pi" :class="work.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
@@ -387,7 +392,7 @@ const handleDebtPaidChange = (value: boolean) => {
         <!-- Нам должны -->
         <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
-            <div class="flex items-center">
+            <div class="flex justify-between items-center">
               <span>Нам должны</span>
               <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handleDebtPaidChange(!debt.paid)">
                 <i class="pi" :class="debt.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
@@ -442,6 +447,7 @@ const handleDebtPaidChange = (value: boolean) => {
       />
     </div>
   </div>
+
   <!-- Фиктивный div с полем ввода -->
   <div class="custom-input-number">
     <input type="number" class="p-inputnumber-input" value="123" />
