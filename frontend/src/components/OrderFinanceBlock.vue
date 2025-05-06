@@ -449,7 +449,7 @@ const handleDebtPaidChange = (value: boolean) => {
   </div>
 
   <!-- Фиктивный div с полем ввода -->
-  <div class="custom-input-number">
+  <div class="custom-input-number" v-if="false">
     <input type="number" class="p-inputnumber-input" value="123" />
   </div>
 </template>
