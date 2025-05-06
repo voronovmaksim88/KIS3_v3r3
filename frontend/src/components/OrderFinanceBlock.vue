@@ -105,17 +105,11 @@ const updateFinanceField = async (fieldName: string, value: number | boolean) =>
 
 // Обработчики изменений полей
 const handlePlanValueChange = async (fieldPrefix: string, value: number) => {
-  const currentValue = fieldPrefix === 'materials' ? materials.value.plan :
-      fieldPrefix === 'products' ? products.value.plan :
-          fieldPrefix === 'work' ? work.value.plan : value;
-  await updateFinanceField(`${fieldPrefix}_cost`, currentValue);
+  await updateFinanceField(`${fieldPrefix}_cost`, value);
 };
 
 const handleFactValueChange = async (fieldPrefix: string, value: number) => {
-  const currentValue = fieldPrefix === 'materials' ? materials.value.fact :
-      fieldPrefix === 'products' ? products.value.fact :
-          fieldPrefix === 'work' ? work.value.fact : value;
-  await updateFinanceField(`${fieldPrefix}_cost_fact`, currentValue);
+  await updateFinanceField(`${fieldPrefix}_cost_fact`, value);
 };
 
 const handlePaidChange = async (fieldPrefix: string, value: boolean) => {
@@ -166,7 +160,6 @@ watch(() => props.finance, (newFinance) => {
   }
 }, { deep: true, immediate: true });
 </script>
-
 <template>
   <div :class="detailBlockClass">
     <Toast />
@@ -182,7 +175,7 @@ watch(() => props.finance, (newFinance) => {
         </tr>
         </thead>
         <tbody>
-
+        <!-- Материалы -->
         <tr>
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
@@ -198,7 +191,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': materials.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || materials.paid"
-                @blur="handlePlanValueChange('materials', materials.plan)"
+                @keyup.enter="() => handlePlanValueChange('materials', materials.plan)"
                 :min="0"
                 :title="materials.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -212,7 +205,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': materials.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || materials.paid"
-                @blur="handleFactValueChange('materials', materials.fact)"
+                @keyup.enter="() => handleFactValueChange('materials', materials.fact)"
                 :min="0"
                 :title="materials.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -222,7 +215,7 @@ watch(() => props.finance, (newFinance) => {
           </td>
         </tr>
 
-
+        <!-- Товары -->
         <tr>
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
@@ -238,7 +231,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': products.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || products.paid"
-                @blur="handlePlanValueChange('products', products.plan)"
+                @keyup.enter="() => handlePlanValueChange('products', products.plan)"
                 :min="0"
                 :title="products.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -252,7 +245,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': products.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || products.paid"
-                @blur="handleFactValueChange('products', products.fact)"
+                @keyup.enter="() => handleFactValueChange('products', products.fact)"
                 :min="0"
                 :title="products.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -262,7 +255,7 @@ watch(() => props.finance, (newFinance) => {
           </td>
         </tr>
 
-
+        <!-- Работы -->
         <tr>
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
@@ -278,7 +271,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': work.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || work.paid"
-                @blur="handlePlanValueChange('work', work.plan)"
+                @keyup.enter="() => handlePlanValueChange('work', work.plan)"
                 :min="0"
                 :title="work.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -292,7 +285,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': work.paid}"
                 inputClass="text-red-300 text-right w-full"
                 :disabled="isLoading || work.paid"
-                @blur="handleFactValueChange('work', work.fact)"
+                @keyup.enter="() => handleFactValueChange('work', work.fact)"
                 :min="0"
                 :title="work.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -302,7 +295,7 @@ watch(() => props.finance, (newFinance) => {
           </td>
         </tr>
 
-
+        <!-- Нам должны -->
         <tr>
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
@@ -318,7 +311,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': debt.paid}"
                 inputClass="text-green-400 text-right w-full"
                 :disabled="isLoading || debt.paid"
-                @blur="handleDebtPlanChange()"
+                @keyup.enter="handleDebtPlanChange"
                 :min="0"
                 :title="debt.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -332,7 +325,7 @@ watch(() => props.finance, (newFinance) => {
                 :class="{'line-through opacity-60': debt.paid}"
                 inputClass="text-green-400 text-right w-full"
                 :disabled="isLoading || debt.paid"
-                @blur="handleDebtFactChange()"
+                @keyup.enter="handleDebtFactChange"
                 :min="0"
                 :title="debt.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />

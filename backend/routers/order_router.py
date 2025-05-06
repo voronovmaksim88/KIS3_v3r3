@@ -415,12 +415,16 @@ async def get_order_detail(
         "deadline_moment": order.deadline_moment,
         "end_moment": order.end_moment,
         "materials_cost": order.materials_cost,
+        "materials_cost_fact": order.materials_cost_fact,
         "materials_paid": order.materials_paid,
         "products_cost": order.products_cost,
+        "products_cost_fact": order.products_cost_fact,
         "products_paid": order.products_paid,
         "work_cost": order.work_cost,
+        "work_cost_fact": order.work_cost_fact,
         "work_paid": order.work_paid,
         "debt": order.debt,
+        "debt_fact": order.debt_fact,
         "debt_paid": order.debt_paid,
         "works": works_data,
         "comments": formatted_comments,  # Используем отформатированные комментарии
@@ -655,6 +659,18 @@ async def edit_order(
     if order_data.debt_paid is not None:
         order.debt_paid = order_data.debt_paid
 
+    if order_data.materials_cost_fact is not None:
+        order.materials_cost_fact = order_data.materials_cost_fact
+
+    if order_data.products_cost_fact is not None:
+        order.products_cost_fact = order_data.products_cost_fact
+
+    if order_data.work_cost_fact is not None:
+        order.work_cost_fact = order_data.work_cost_fact
+
+    if order_data.debt_fact is not None:
+        order.debt_fact = order_data.debt_fact
+
     # Обновляем связанные работы, если они указаны
     if order_data.work_ids is not None:
         # Проверяем существование всех работ
@@ -705,12 +721,16 @@ async def edit_order(
         "deadline_moment": order.deadline_moment,
         "end_moment": order.end_moment,
         "materials_cost": order.materials_cost,
+        "materials_cost_fact": order.materials_cost_fact,
         "materials_paid": order.materials_paid,
         "products_cost": order.products_cost,
+        "products_cost_fact": order.products_cost_fact,
         "products_paid": order.products_paid,
         "work_cost": order.work_cost,
+        "work_cost_fact": order.work_cost_fact,
         "work_paid": order.work_paid,
         "debt": order.debt,
+        "debt_fact": order.debt_fact,
         "debt_paid": order.debt_paid,
         "works": [WorkSchema.model_validate(work) for work in order.works],
     }
