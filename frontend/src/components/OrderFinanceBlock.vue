@@ -5,6 +5,9 @@ import { useOrdersStore } from '@/stores/storeOrders';
 import InputNumber from 'primevue/inputnumber';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+// После импортов добавить:
+import Button from 'primevue/button';
+
 
 // Определение интерфейса для финансовых данных с поддержкой null
 interface FinanceData {
@@ -65,8 +68,54 @@ const debt = ref({
 // Состояние загрузки из стора
 const isLoading = computed(() => ordersStore.isLoading);
 
-// Функция для обновления финансовых данных
-const updateFinanceField = async (fieldName: string, value: number | boolean) => {
+
+// После определения ref-объектов добавить:
+// Добавляем оригинальные данные для восстановления при отмене
+const originalData = ref({
+  materials: {
+    plan: props.finance?.materials_cost ?? 0,
+    fact: props.finance?.materials_cost_fact ?? 0,
+    paid: props.finance?.materials_paid ?? false
+  },
+  products: {
+    plan: props.finance?.products_cost ?? 0,
+    fact: props.finance?.products_cost_fact ?? 0,
+    paid: props.finance?.products_paid ?? false
+  },
+  work: {
+    plan: props.finance?.work_cost ?? 0,
+    fact: props.finance?.work_cost_fact ?? 0,
+    paid: props.finance?.work_paid ?? false
+  },
+  debt: {
+    plan: props.finance?.debt ?? 0,
+    fact: props.finance?.debt_fact ?? 0,
+    paid: props.finance?.debt_paid ?? false
+  }
+});
+
+// Флаг для отслеживания изменений
+const hasChanges = ref(false);
+
+// Добавляем вотчер, который отслеживает изменения во всех полях ввода
+watch(
+    [materials, products, work, debt],
+    () => {
+      // Проверяем, отличаются ли текущие значения от оригинальных
+      hasChanges.value =
+          JSON.stringify({
+            materials: materials.value,
+            products: products.value,
+            work: work.value,
+            debt: debt.value
+          }) !==
+          JSON.stringify(originalData.value);
+    },
+    { deep: true }
+);
+
+// Функция для сохранения всех изменений
+const saveChanges = async () => {
   if (!props.orderSerial) {
     toast.add({
       severity: 'error',
@@ -78,12 +127,35 @@ const updateFinanceField = async (fieldName: string, value: number | boolean) =>
   }
 
   try {
-    // Создаем объект с обновляемым полем
-    const updateData: Record<string, any> = {};
-    updateData[fieldName] = value;
+    // Создаем объект с обновляемыми полями
+    const updateData: Record<string, any> = {
+      materials_cost: materials.value.plan,
+      materials_cost_fact: materials.value.fact,
+      materials_paid: materials.value.paid,
+      products_cost: products.value.plan,
+      products_cost_fact: products.value.fact,
+      products_paid: products.value.paid,
+      work_cost: work.value.plan,
+      work_cost_fact: work.value.fact,
+      work_paid: work.value.paid,
+      debt: debt.value.plan,
+      debt_fact: debt.value.fact,
+      debt_paid: debt.value.paid
+    };
 
     // Вызываем метод обновления из хранилища
     await ordersStore.updateOrder(props.orderSerial, updateData);
+
+    // Обновляем оригинальные данные
+    originalData.value = {
+      materials: { ...materials.value },
+      products: { ...products.value },
+      work: { ...work.value },
+      debt: { ...debt.value }
+    };
+
+    // Сбрасываем флаг изменений
+    hasChanges.value = false;
 
     // Показываем уведомление об успешном обновлении
     toast.add({
@@ -103,32 +175,24 @@ const updateFinanceField = async (fieldName: string, value: number | boolean) =>
   }
 };
 
-// Обработчики изменений полей
-const handlePlanValueChange = async (fieldPrefix: string, value: number) => {
-  await updateFinanceField(`${fieldPrefix}_cost`, value);
-};
+// Функция для отмены изменений
+const cancelChanges = () => {
+  // Восстанавливаем оригинальные значения
+  materials.value = { ...originalData.value.materials };
+  products.value = { ...originalData.value.products };
+  work.value = { ...originalData.value.work };
+  debt.value = { ...originalData.value.debt };
 
-const handleFactValueChange = async (fieldPrefix: string, value: number) => {
-  await updateFinanceField(`${fieldPrefix}_cost_fact`, value);
-};
+  // Сбрасываем флаг изменений
+  hasChanges.value = false;
 
-const handlePaidChange = async (fieldPrefix: string, value: boolean) => {
-  await updateFinanceField(`${fieldPrefix}_paid`, value);
+  toast.add({
+    severity: 'info',
+    summary: 'Отменено',
+    detail: 'Изменения были отменены',
+    life: 3000
+  });
 };
-
-// Специальные обработчики для долга
-const handleDebtPlanChange = async () => {
-  await updateFinanceField('debt', debt.value.plan);
-};
-
-const handleDebtFactChange = async () => {
-  await updateFinanceField('debt_fact', debt.value.fact);
-};
-
-const handleDebtPaidChange = async (value: boolean) => {
-  await updateFinanceField('debt_paid', value);
-};
-
 
 
 // Следим за изменениями в props.finance и обновляем локальные данные
@@ -157,30 +221,61 @@ watch(() => props.finance, (newFinance) => {
       fact: newFinance.debt_fact ?? 0,
       paid: newFinance.debt_paid ?? false
     };
+
+    // Обновляем оригинальные данные
+    originalData.value = {
+      materials: { ...materials.value },
+      products: { ...products.value },
+      work: { ...work.value },
+      debt: { ...debt.value }
+    };
+
+    // Сбрасываем флаг изменений
+    hasChanges.value = false;
   }
 }, { deep: true, immediate: true });
+
+// Обработчики изменений полей
+const handlePaidChange = (fieldPrefix: string, value: boolean) => {
+  if (fieldPrefix === 'materials') {
+    materials.value.paid = value;
+  } else if (fieldPrefix === 'products') {
+    products.value.paid = value;
+  } else if (fieldPrefix === 'work') {
+    work.value.paid = value;
+  }
+};
+
+// Специальные обработчики для долга
+const handleDebtPaidChange = (value: boolean) => {
+  debt.value.paid = value;
+};
+
 </script>
+
+
+
 <template>
   <div :class="detailBlockClass">
     <Toast />
     <h4 :class="detailHeaderClass">Финансы</h4>
 
     <div class="overflow-auto">
-      <table class="w-full">
+      <table class="w-full border-collapse">
         <thead>
         <tr>
-          <th class="text-left py-2">Категория</th>
-          <th class="text-right py-2">План (руб.)</th>
-          <th class="text-right py-2">Факт (руб.)</th>
+          <th class="text-left py-2 text-sm text-gray-500 font-medium">Категория</th>
+          <th class="text-right py-2 text-sm text-gray-500 font-medium">План (руб.)</th>
+          <th class="text-right py-2 text-sm text-gray-500 font-medium">Факт (руб.)</th>
         </tr>
         </thead>
         <tbody>
         <!-- Материалы -->
-        <tr>
+        <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
               <span>Материалы</span>
-              <div class="ml-2 cursor-pointer" @click="handlePaidChange('materials', !materials.paid)">
+              <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('materials', !materials.paid)">
                 <i class="pi" :class="materials.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
               </div>
             </div>
@@ -189,9 +284,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="materials.plan"
                 :class="{'line-through opacity-60': materials.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || materials.paid"
-                @keyup.enter="() => handlePlanValueChange('materials', materials.plan)"
                 :min="0"
                 :title="materials.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -203,9 +297,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="materials.fact"
                 :class="{'line-through opacity-60': materials.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || materials.paid"
-                @keyup.enter="() => handleFactValueChange('materials', materials.fact)"
                 :min="0"
                 :title="materials.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -216,11 +309,11 @@ watch(() => props.finance, (newFinance) => {
         </tr>
 
         <!-- Товары -->
-        <tr>
+        <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
               <span>Товары</span>
-              <div class="ml-2 cursor-pointer" @click="handlePaidChange('products', !products.paid)">
+              <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('products', !products.paid)">
                 <i class="pi" :class="products.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
               </div>
             </div>
@@ -229,9 +322,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="products.plan"
                 :class="{'line-through opacity-60': products.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || products.paid"
-                @keyup.enter="() => handlePlanValueChange('products', products.plan)"
                 :min="0"
                 :title="products.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -243,9 +335,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="products.fact"
                 :class="{'line-through opacity-60': products.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || products.paid"
-                @keyup.enter="() => handleFactValueChange('products', products.fact)"
                 :min="0"
                 :title="products.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -256,11 +347,11 @@ watch(() => props.finance, (newFinance) => {
         </tr>
 
         <!-- Работы -->
-        <tr>
+        <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
               <span>Работы</span>
-              <div class="ml-2 cursor-pointer" @click="handlePaidChange('work', !work.paid)">
+              <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handlePaidChange('work', !work.paid)">
                 <i class="pi" :class="work.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
               </div>
             </div>
@@ -269,9 +360,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="work.plan"
                 :class="{'line-through opacity-60': work.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || work.paid"
-                @keyup.enter="() => handlePlanValueChange('work', work.plan)"
                 :min="0"
                 :title="work.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -283,9 +373,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="work.fact"
                 :class="{'line-through opacity-60': work.paid}"
-                inputClass="text-red-300 text-right w-full"
+                inputClass="text-red-300 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || work.paid"
-                @keyup.enter="() => handleFactValueChange('work', work.fact)"
                 :min="0"
                 :title="work.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -296,11 +385,11 @@ watch(() => props.finance, (newFinance) => {
         </tr>
 
         <!-- Нам должны -->
-        <tr>
+        <tr class="border-b border-gray-200">
           <td class="py-2" :class="tdBaseTextClass">
             <div class="flex items-center">
               <span>Нам должны</span>
-              <div class="ml-2 cursor-pointer" @click="handleDebtPaidChange(!debt.paid)">
+              <div class="ml-2 cursor-pointer flex items-center justify-center" @click="handleDebtPaidChange(!debt.paid)">
                 <i class="pi" :class="debt.paid ? 'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
               </div>
             </div>
@@ -309,9 +398,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="debt.plan"
                 :class="{'line-through opacity-60': debt.paid}"
-                inputClass="text-green-400 text-right w-full"
+                inputClass="text-green-400 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || debt.paid"
-                @keyup.enter="handleDebtPlanChange"
                 :min="0"
                 :title="debt.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -323,9 +411,8 @@ watch(() => props.finance, (newFinance) => {
             <InputNumber
                 v-model="debt.fact"
                 :class="{'line-through opacity-60': debt.paid}"
-                inputClass="text-green-400 text-right w-full"
+                inputClass="text-green-400 text-right w-full min-w-[90px] px-2 py-1"
                 :disabled="isLoading || debt.paid"
-                @keyup.enter="handleDebtFactChange"
                 :min="0"
                 :title="debt.paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
@@ -337,8 +424,31 @@ watch(() => props.finance, (newFinance) => {
         </tbody>
       </table>
     </div>
+
+    <div class="flex justify-end mt-4 space-x-2">
+      <Button
+          label="Отмена"
+          severity="secondary"
+          :disabled="!hasChanges || isLoading"
+          @click="cancelChanges"
+          raised
+      />
+      <Button
+          label="ОК"
+          severity="primary"
+          :disabled="!hasChanges || isLoading"
+          @click="saveChanges"
+          raised
+      />
+    </div>
+  </div>
+  <!-- Фиктивный div с полем ввода -->
+  <div class="custom-input-number">
+    <input type="number" class="p-inputnumber-input" value="123" />
   </div>
 </template>
+
+
 
 <style scoped>
 /* Стили для таблицы */
@@ -361,13 +471,6 @@ tr {
   width: 100%;
   min-width: 90px;
   padding: 0.25rem 0.5rem;
-}
-
-/* Позиционирование иконок оплаты */
-.cursor-pointer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 :deep(.p-inputnumber-input:disabled) {
