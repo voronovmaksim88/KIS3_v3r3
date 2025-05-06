@@ -852,6 +852,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                         :detailBlockClass="detailBlockClass"
                         :detailHeaderClass="detailHeaderClass"
                         :tdBaseTextClass="tdBaseTextClass"
+                        :order-serial="order.serial"
                     />
 
                   </div>
