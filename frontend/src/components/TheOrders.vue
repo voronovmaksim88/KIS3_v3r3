@@ -256,7 +256,7 @@ const mainContainerClass = computed(() => {
 // Классы для фона основной таблицы
 const tableBaseClass = computed(() => {
   const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-white border border-gray-200`;
+  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
 });
 
 // Классы для шапки таблицы (<th> colspan=6)
