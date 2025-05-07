@@ -13,7 +13,7 @@ import {
     typeOrderCreate, typeOrderEdit
 } from "../types/typeOrder";
 import {getApiUrl} from '../utils/apiUrlHelper';
-import { useOrdersTableStore } from '@/stores/storeOrdersTable';
+import {useOrdersTableStore} from '@/stores/storeOrdersTable';
 
 export const useOrdersStore = defineStore('orders', () => {
     // === Состояние ===
@@ -54,7 +54,9 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // === Действия (Actions) ===
 
-    const clearError = () => { error.value = null; };
+    const clearError = () => {
+        error.value = null;
+    };
 
     const getStatusText = (statusId: number | null): string => {
         if (statusId === null || statusId === undefined) return "Неизвестный статус";
@@ -138,7 +140,7 @@ export const useOrdersStore = defineStore('orders', () => {
         try {
             const response = await axios.get<typeOrderSerial>(
                 `${getApiUrl()}order/new-serial`,
-                { withCredentials: true }
+                {withCredentials: true}
             );
             newOrderSerial.value = response.data.serial;
             return response.data.serial;
@@ -181,9 +183,9 @@ export const useOrdersStore = defineStore('orders', () => {
         error.value = null;
         try {
             const response = await axios.post<typeOrderRead>(
-                `${getApiUrl()}order/create`, orderData, { withCredentials: true }
+                `${getApiUrl()}order/create`, orderData, {withCredentials: true}
             );
-            await fetchOrders({ skip: 0, limit: currentLimit.value });
+            await fetchOrders({skip: 0, limit: currentLimit.value});
             return response.data;
         } catch (err) {
             handleAxiosError(err, 'Failed to create order');
@@ -198,16 +200,17 @@ export const useOrdersStore = defineStore('orders', () => {
         error.value = null;
         try {
             const response = await axios.patch<typeOrderRead>( // Ответ от PATCH все еще typeOrderRead
-                `${getApiUrl()}order/edit/${serial}`, { order_data: orderData }, { withCredentials: true }
+                `${getApiUrl()}order/edit/${serial}`, {order_data: orderData}, {withCredentials: true}
             );
 
-            // Перезапрашиваем список для таблицы
-            await fetchOrders({ skip: currentSkip.value, limit: currentLimit.value });
 
             // Если текущий открытый заказ - это тот, что мы обновили, перезапрашиваем его детали
             if (currentOrderDetail.value?.serial === serial) {
                 await fetchOrderDetail(serial); // <--- Запрашиваем полные детали заново
+            } else { // А если нет, то перезапрашиваем список для таблицы
+                await fetchOrders({skip: currentSkip.value, limit: currentLimit.value});
             }
+
 
             return response.data; // Возвращаем ответ от PATCH (если он нужен вызывающей стороне)
         } catch (err) {
