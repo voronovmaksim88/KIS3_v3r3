@@ -104,7 +104,6 @@ const handleUpdateOrderWorks = async () => {
       summary: 'Успешно',
       detail: `Список работ для заказа #${props.orderId} обновлен`,
       life: 3000,
-      group: 'dialog-toast' // Указываем группу для Toast внутри диалога
     });
 
     emit('update-works');
@@ -117,7 +116,6 @@ const handleUpdateOrderWorks = async () => {
       summary: 'Ошибка',
       detail: `Не удалось изменить список работ заказа #${props.orderId}`,
       life: 5000,
-      group: 'dialog-toast' // Указываем группу для Toast внутри диалога
     });
   } finally {
     isWorksUpdateLoading.value = false;
@@ -153,7 +151,7 @@ const cancelEdit = () => {
 
 
 
-    <Toast position="top-center" group="dialog-toast" />
+    <Toast/>
 
     <div class="p-4">
       <div class="mb-4">
