@@ -459,18 +459,11 @@ const openWorksEditDialog = (orderId: string, currentWorks: { id: number, name?:
  * Обработчик успешного обновления списка работ из диалога
  */
 const handleWorksUpdated = async () => {
-  // Просто обновим список заказов, чтобы увидеть изменения
-  // В будущем можно оптимизировать и обновить только измененный заказ локально
-  await fetchOrders({
-    skip: currentSkip.value,
-    limit: currentLimit.value,
-  });
   enableScroll(); // Восстанавливаем прокрутку
 };
 
 // Обработчик отмены редактирования списка работ
 const handleWorksEditCancel = () => {
-  // selectedOrderForWorksEdit.value = { id: null, workIds: [] }; // Диалог сам сбросит visible
   enableScroll(); // Восстанавливаем прокрутку
 };
 
