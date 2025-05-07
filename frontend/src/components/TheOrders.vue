@@ -419,13 +419,8 @@ const openNameEditDialog = (orderId: string, currentName: string) => {
 const handleNameUpdated = async () => {
   // Здесь уже не нужно вызывать ordersStore.updateOrder или показывать toast,
   // так как это делает OrderNameEditDialog.
-  // Но нужно обновить список заказов, чтобы изменения отобразились.
-  await fetchOrders({
-    skip: currentSkip.value,
-    limit: currentLimit.value,
-  });
-  // Очищаем выбранный заказ после закрытия диалога
-  selectedOrderForNameEdit.value = {id: null, name: ''};
+  // И обновлять список заказов не надо тоже, это реализовано в ordersStore.updateOrder
+ console.log("заказ будет обновлен")
 };
 
 // Обработчик отмены редактирования названия
