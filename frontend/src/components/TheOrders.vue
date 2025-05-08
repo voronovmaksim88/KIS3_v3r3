@@ -8,7 +8,7 @@ import {useOrdersTableStore} from '@/stores/storeOrdersTable'; // Импорт �
 import {getStatusColor} from "@/utils/getStatusColor";
 
 // Импортируем типы
-import { OrderSortField } from '@/types/typeOrder'; //  для сортировки
+import {OrderSortField} from '@/types/typeOrder'; //  для сортировки
 
 // импорт других сторов
 import {useThemeStore} from '../stores/storeTheme';
@@ -125,11 +125,21 @@ const handleCreateCancel = () => {
 
 // функция поиска по заказам
 function findOrders() {
-  if (!searchCustomerInput.value.trim()) return;
+  const searchParams: { search_customer?: string; search_serial?: string } = {};
+  if (searchCustomerInput.value.trim()) {
+    searchParams.search_customer = searchCustomerInput.value.trim();
+  }
+  if (searchSerialInput.value.trim()) {
+    searchParams.search_serial = searchSerialInput.value.trim();
+  }
 
   ordersTableStore.setSkip(0);
-  ordersStore.fetchOrders({ searchCustomer: searchCustomerInput.value });
+  ordersStore.fetchOrders({
+    searchSerial: searchSerialInput.value,
+    searchCustomer: searchCustomerInput.value,
+  });
 }
+
 
 // для хранения серийного номера заказа, чья дополнительная строка должна быть показана.
 const expandedOrderSerial = ref<string | null>(null);
@@ -164,7 +174,7 @@ watch(
       // fetchOrders сам прочитает актуальное состояние из ordersTableStore.
       fetchOrders();
     },
-    { deep: true } // Глубокое отслеживание, если state содержит объекты
+    {deep: true} // Глубокое отслеживание, если state содержит объекты
 );
 
 
@@ -578,6 +588,7 @@ const statusFilterButtons = [
 
 // Обработчик сброса состояния таблицы и данных
 const handleResetTableAndData = () => {
+  searchSerialInput.value = ''; // Сбрасываем значение поиска по номерам
   searchCustomerInput.value = ''; // Сбрасываем значение поиска по заказчикам
   resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
   resetOrders(); // Сбрасываем данные заказов в ordersStore
@@ -586,10 +597,10 @@ const handleResetTableAndData = () => {
 
 // Опции для выбора лимита на странице
 const limitOptions = [
-  { label: '10', value: 10 },
-  { label: '25', value: 25 },
-  { label: '50', value: 50 },
-  { label: '100', value: 100 },
+  {label: '10', value: 10},
+  {label: '25', value: 25},
+  {label: '50', value: 50},
+  {label: '100', value: 100},
 ];
 
 // Реактивное поле поиска по заказчику
@@ -606,9 +617,11 @@ watch(
     }
 );
 
+// Реактивное поле поиска по номеру заказа
+const searchSerialInput = ref<string>('');
+
+
 </script>
-
-
 
 
 <template>
@@ -720,7 +733,7 @@ watch(
                       @click="findOrders"
                       label="Поиск"
                       severity="secondary"
-                      :disabled="!searchCustomerInput.trim()"
+                      :disabled="!searchCustomerInput.trim() && !searchSerialInput.trim()"
                       raised
                       class="mr-2"
                   />
@@ -737,12 +750,28 @@ watch(
         </tr>
         <tr>
 
-          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('serial', $event)">
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => {
+                // Проверяем, был ли клик по самому элементу input
+                if ((event.target as HTMLElement).tagName !== 'INPUT') {
+                  handleSortClick('serial', event);
+                }
+              }"
+          >
             <div class="flex items-center">
               Номер
               <span class="ml-1">
                 <i :class="getSortIcon('serial')"></i>
               </span>
+            </div>
+            <div class="mt-2">
+              <InputText
+                  v-model="searchSerialInput"
+                  placeholder="Поиск"
+                  class="w-full text-sm font-medium"
+              />
             </div>
           </th>
 
