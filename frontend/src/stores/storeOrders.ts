@@ -199,11 +199,16 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // --- НОВОЕ ДЕЙСТВИЕ для установки фильтра по статусу ---
     const setFilterStatus = async (statusId: number | null) => {
+        // Проверяем, если нажатый статус уже является текущим фильтром
         if (currentFilterStatus.value === statusId) {
-            // Если статус уже установлен, ничего не делаем
-            return;
+            // Если да, сбрасываем фильтр (устанавливаем null)
+            currentFilterStatus.value = null;
+            console.log("Filter status unset"); // Опциональный лог для отладки
+        } else {
+            // В противном случае устанавливаем новый фильтр
+            currentFilterStatus.value = statusId;
+            console.log("Filter status set to:", statusId); // Опциональный лог для отладки
         }
-        currentFilterStatus.value = statusId;
         // Применяем новый фильтр, сбрасываем пагинацию на первую страницу.
         // Сохраняем текущий лимит, сортировку и showEnded
         const ordersTableStore = useOrdersTableStore();
