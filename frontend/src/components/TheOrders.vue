@@ -1,10 +1,11 @@
 <!-- src/components/TheOrders.vue -->
+
 <script setup lang="ts">
 import {onMounted, ref, computed} from 'vue';
 import { watch } from 'vue'; // Добавьте watch
 import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
-import {getStatusColor} from "@/utils/getStatusColor";
+import {getStatusColor} from "@/utils/getStatusColor"; // Убедитесь, что этот импорт есть и функция доступна
 
 // импорт сторов
 import {useThemeStore} from '../stores/storeTheme';
@@ -162,6 +163,11 @@ onMounted(() => {
   fetchOrders({
     skip: 0,
     limit: 50,
+    // Добавляем сюда текущее состояние фильтра showEndedOrders при первой загрузке
+    showEnded: ordersTableStore.showEndedOrders,
+    // Добавляем сюда текущее состояние сортировки при первой загрузке
+    sortField: currentSortField.value,
+    sortDirection: currentSortDirection.value,
   });
 });
 
@@ -172,6 +178,10 @@ const goToPreviousPage = () => {
     fetchOrders({
       skip: newSkip,
       limit: currentLimit.value,
+      // Передаем текущие параметры сортировки и фильтрации при пагинации
+      showEnded: ordersTableStore.showEndedOrders,
+      sortField: currentSortField.value,
+      sortDirection: currentSortDirection.value,
     });
   }
 };
@@ -182,6 +192,10 @@ const goToNextPage = () => {
     fetchOrders({
       skip: newSkip,
       limit: currentLimit.value,
+      // Передаем текущие параметры сортировки и фильтрации при пагинации
+      showEnded: ordersTableStore.showEndedOrders,
+      sortField: currentSortField.value,
+      sortDirection: currentSortDirection.value,
     });
   }
 };
@@ -420,7 +434,7 @@ const handleNameUpdated = async () => {
   // Здесь уже не нужно вызывать ordersStore.updateOrder или показывать toast,
   // так как это делает OrderNameEditDialog.
   // И обновлять список заказов не надо тоже, это реализовано в ordersStore.updateOrder
- console.log("заказ будет обновлен")
+  console.log("заказ будет обновлен")
 };
 
 // Обработчик отмены редактирования названия
@@ -519,7 +533,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
   <div :class="mainContainerClass">
     <Toast/>
 
-    <!-- Модальное окно редактирования названия заказа -->
+
     <OrderNameEditDialog
         v-model:visible="showNameEditDialog"
         :order-id="selectedOrderForNameEdit.id"
@@ -528,7 +542,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
         @cancel="handleNameEditCancel"
     />
 
-    <!-- Модальное окно редактирования списка работ -->
+
     <OrderWorksEditDialog
         v-model:visible="showWorksEditDialog"
         :order-id="selectedOrderForWorksEdit.id"
@@ -538,7 +552,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
     />
 
 
-    <!-- Модальное окно создания заказа -->
+
     <transition name="fade">
       <div v-if="showCreateDialog"
            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -623,7 +637,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
         </tr>
         <tr>
 
-          <!-- Номер -->
+
           <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('serial')">
             <div class="flex items-center">
               Номер
@@ -636,7 +650,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
 
           <th :class="thClasses">Заказчик</th>
 
-          <!-- Приоритет-->
+
           <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('priority')">
             <div class="flex items-center">
               Приоритет
@@ -648,7 +662,17 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
 
           <th :class="thClasses">Название</th>
           <th :class="thClasses">Виды работ</th>
-          <th :class="thClasses">Статус</th>
+
+
+          <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('status')">
+            <div class="flex items-center">
+              Статус
+              <span class="ml-1">
+
+                <i :class="getSortIcon('status')"></i>
+              </span>
+            </div>
+          </th>
         </tr>
         </thead>
         <tbody>
@@ -663,7 +687,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                     tdBaseTextClass, // computed для базового текста
                     { 'font-bold': [1, 2, 3, 4, 8].includes(order.status_id) }
                 ]"
-                :style="{ color: getStatusColor(order.status_id) }"
+                :style="{ color: getStatusColor(order.status_id, currentTheme) }"
                 @click="toggleOrderDetails(order.serial)"
             >
               {{ order.serial }}
@@ -686,7 +710,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                   :autoFilterFocus="true"
                   @change="handleCustomerChange(order.serial, order.customer_id)"
               >
-                <!-- Шаблон для отображения выбранного значения -->
+
                 <template #value="slotProps">
                   <div v-if="slotProps.value" class="flex items-center">
                     <div>
@@ -702,7 +726,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
                   </span>
                 </template>
 
-                <!-- Шаблон для отображения опций -->
+
                 <template #option="slotProps">
                   <div class="flex items-center">
                     <div>{{ slotProps.option.name }}</div>
@@ -739,7 +763,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
               </Select>
             </td>
 
-            <!-- В таблице добавим возможность изменить название при клике -->
+
             <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors"
                 :class="tdBaseTextClass"
                 @click="openNameEditDialog(order.serial, order.name)">
@@ -776,7 +800,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
               >
 
                 <template #value="slotProps">
-                   <span v-if="slotProps.value" :style="{ color: getStatusColor(slotProps.value) }">
+                   <span v-if="slotProps.value" :style="{ color: getStatusColor(slotProps.value, currentTheme) }">
                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                    </span>
                   <span v-else>{{ slotProps.placeholder }}</span>
@@ -784,7 +808,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
 
                 <template #option="slotProps">
                   <div class="flex items-center">
-                      <span :style="{ color: getStatusColor(slotProps.option.value) }">
+                      <span :style="{ color: getStatusColor(slotProps.option.value, currentTheme) }">
                         {{ slotProps.option.label }}
                       </span>
                   </div>
