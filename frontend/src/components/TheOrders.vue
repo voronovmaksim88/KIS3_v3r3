@@ -1,31 +1,30 @@
-<!-- src/components/TheOrders.vue -->
 
 <script setup lang="ts">
 import {onMounted, ref, computed} from 'vue';
-import {watch} from 'vue'; // Добавьте watch
+import {watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
-import {getStatusColor} from "@/utils/getStatusColor"; // Убедитесь, что этот импорт есть и функция доступна
-
-// импорт сторов
-import {useThemeStore} from '../stores/storeTheme';
-import {useCounterpartyStore} from '@/stores/storeCounterparty'; // Импортируем store контрагентов
-import {useWorksStore} from "@/stores/storeWorks"; // <-- Импорт works store если еще не импортирован
 import {useOrdersTableStore} from '@/stores/storeOrdersTable'; // Импорт нового стора
+import {getStatusColor} from "@/utils/getStatusColor";
+
+// импорт других сторов
+import {useThemeStore} from '../stores/storeTheme';
+import {useCounterpartyStore} from '@/stores/storeCounterparty';
+import {useWorksStore} from "@/stores/storeWorks";
 
 // мои компоненты
-import OrderCreateForm from '@/components/OrderCreateForm.vue'; // Импорт нашего нового компонента
+import OrderCreateForm from '@/components/OrderCreateForm.vue';
 import OrderCommentBlock from '@/components/OrderCommentBlock.vue';
 import TaskList from "@/components/TaskList.vue";
 import OrderFinanceBlock from '@/components/OrderFinanceBlock.vue';
 import OrderDateBlock from '@/components/OrderDateBlock.vue';
-import OrderNameEditDialog from '@/components/OrderNameEditDialog.vue'; // Импорт нового компонента диалога
-import OrderWorksEditDialog from '@/components/OrderWorksEditDialog.vue'; // <-- Импорт нового компонента
+import OrderNameEditDialog from '@/components/OrderNameEditDialog.vue';
+import OrderWorksEditDialog from '@/components/OrderWorksEditDialog.vue';
 
 // primevue компоненты
 import Toast from 'primevue/toast'
 import SelectButton from 'primevue/selectbutton';
-import Select from 'primevue/select'; // Импортируем компонент выпадающего списка
+import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 
@@ -35,43 +34,63 @@ const toast = useToast();
 
 
 // Store темы
-const themeStore = useThemeStore(); // <--- 2. Получаем экземпляр Theme Store
-const {theme: currentTheme} = storeToRefs(themeStore); // <--- 3. Получаем реактивную ссылку на тему
+const themeStore = useThemeStore();
+const {theme: currentTheme} = storeToRefs(themeStore);
 
-// Store для заказов
+// Store для заказов и Store для состояния таблицы заказов
 const ordersStore = useOrdersStore();
+const ordersTableStore = useOrdersTableStore(); // Получаем экземпляр стора таблицы
 
-// Извлекаем реактивные переменные и действия из стора.
+
+// Извлекаем реактивные переменные из стора заказов (данные и флаги загрузки)
 const {
   orders,
   isLoading,
   error,
   totalOrders,
-  currentPage,
-  totalPages,
-  currentLimit,
-  currentSkip,
+  currentPage, // Теперь computed в ordersStore, читает из ordersTableStore
+  totalPages,  // Теперь computed в ordersStore, читает из ordersTableStore
   currentOrderDetail,
   isDetailLoading,
-  currentSortField, //
-  currentSortDirection, //
-  currentFilterStatus, //
 } = storeToRefs(ordersStore);
 
-// Действия можно извлекать напрямую
+// Извлекаем реактивные переменные из стора таблицы (состояние отображения)
+const {
+  currentLimit,
+  currentSkip,
+  currentSortField,
+  currentSortDirection,
+  currentFilterStatus,
+  showEndedOrders, // Это состояние тоже теперь управляется ordersTableStore
+} = storeToRefs(ordersTableStore);
+
+
+// Действия из стора заказов
 const {
   fetchOrders,
   clearError,
   fetchOrderDetail,
   resetOrderDetail,
-  resetOrders,
+  resetOrders, // Сбрасывает только данные заказов
 } = ordersStore;
+
+// Действия из стора таблицы заказов
+const {
+  setLimit,
+  setSkip,
+  setSort, // Новое действие для установки сортировки
+  resetTableState, // Новое действие для сброса состояния таблицы
+} = ordersTableStore;
+
 
 // Состояние для модального окна создания заказа
 const showCreateDialog = ref(false);
 
 // Добавляем store контрагентов
 const counterpartyStore = useCounterpartyStore();
+// Добавляем store работ
+const worksStore = useWorksStore();
+
 
 // Методы для управления прокруткой страницы
 function disableScroll() {
@@ -88,26 +107,24 @@ function addNewOrder() {
   disableScroll(); // Блокируем прокрутку при открытии модального окна
 }
 
-
-// Модифицируем обработчики закрытия модального окна
+// Обработчики закрытия модального окна создания заказа
 const handleOrderCreated = () => {
   showCreateDialog.value = false;
-  enableScroll(); // Восстанавливаем прокрутку при закрытии модального окна
-  fetchOrders({
-    skip: currentSkip.value,
-    limit: currentLimit.value,
-  });
+  enableScroll(); // Восстанавливаем прокрутку
+  // После создания, просто перезагружаем текущую страницу с текущими параметрами таблицы
+  fetchOrders();
 }
-
 
 const handleCreateCancel = () => {
   showCreateDialog.value = false;
-  enableScroll(); // Восстанавливаем прокрутку при закрытии модального окна
+  enableScroll(); // Восстанавливаем прокрутку
 }
 
 
 function findOrders() {
   // Функциональность поиска может быть добавлена позже
+  // Когда будет добавлена, она тоже должна будет вызывать ordersTableStore.setSkip(0)
+  // и ordersStore.fetchOrders()
 }
 
 // для хранения серийного номера заказа, чья дополнительная строка должна быть показана.
@@ -116,54 +133,48 @@ const expandedOrderSerial = ref<string | null>(null);
 const toggleOrderDetails = async (serial: string) => {
   if (expandedOrderSerial.value === serial) {
     expandedOrderSerial.value = null;
-    resetOrderDetail(); // Сбрасываем детали заказа
+    resetOrderDetail(); // Сбрасываем детали заказа в ordersStore
   } else {
     expandedOrderSerial.value = serial;
-    // Просто вызываем fetchOrderDetail, данные сохранятся в сторе
+    // Просто вызываем fetchOrderDetail, данные сохранятся в ordersStore
     await fetchOrderDetail(serial);
   }
 };
 
 
-// Состояние для отображения завершенных заказов
-const ordersTableStore = useOrdersTableStore(); // Получаем экземпляр стора
-// 1. Упрощенное computed свойство
-const showEndedOrders = computed({
-  get: () => ordersTableStore.showEndedOrders,
-  set: () => {
-    ordersTableStore.toggleShowEndedOrders();
-  }
-});
-
-// для отслеживания изменений и вызова fetchOrders
+// --- Watcher для отслеживания изменений состояния таблицы и вызова fetchOrders ---
+// Теперь один watcher отслеживает все параметры, которые влияют на запрос
 watch(
-    // Источник для отслеживания: можно напрямую следить за состоянием стора
-    () => ordersTableStore.showEndedOrders,
-    // Callback, который выполнится при изменении
-    (newValue) => {
-      // Вызываем fetchOrders с новым значением showEnded.
-      // Сбрасываем на первую страницу при смене фильтра
-      fetchOrders({
-        skip: 0,
-        limit: currentLimit.value, // Используем текущий лимит
-        showEnded: newValue // Передаем новое значение из watch
-      });
+    [
+      currentLimit,
+      currentSkip,
+      currentSortField,
+      currentSortDirection,
+      currentFilterStatus,
+      showEndedOrders,
+      // Добавьте сюда другие параметры поиска/фильтрации, если они появятся в ordersTableStore
+    ],
+    () => {
+      console.log('Table state changed, fetching orders...');
+      // При любом изменении состояния таблицы, вызываем fetchOrders без параметров.
+      // fetchOrders сам прочитает актуальное состояние из ordersTableStore.
+      fetchOrders();
     },
+    { deep: true } // Глубокое отслеживание, если state содержит объекты
 );
 
 
 // Вызываем действие fetchOrders при монтировании компонента
 onMounted(() => {
-  // Сбрасываем список заказов
-  resetOrders()
-
-  // Загружаем первую страницу с учетом параметра showEndedOrders
-  //fetchOrders({skip: 0, limit: 50, showEnded: showEndedOrders.value});
+  // Сбрасываем данные заказов
+  resetOrders();
+  // Сбрасываем состояние таблицы к дефолтным значениям
+  resetTableState();
 
   // Загружаем список контрагентов
   counterpartyStore.fetchCounterparties();
 
-  // Загружаем работы один раз при монтировании основного компонента
+  // Загружаем работы
   worksStore.fetchWorks();
 
   // Загружаем данные
@@ -178,34 +189,54 @@ onMounted(() => {
   });
 });
 
-// Функции для пагинации (вызывают fetchOrders с новыми параметрами)
+// Функции для пагинации (вызывают setSkip в ordersTableStore)
 const goToPreviousPage = () => {
   if (currentPage.value > 0) {
     const newSkip = currentSkip.value - currentLimit.value;
-    fetchOrders({
-      skip: newSkip,
-      limit: currentLimit.value,
-      // Передаем текущие параметры сортировки и фильтрации при пагинации
-      showEnded: ordersTableStore.showEndedOrders,
-      sortField: currentSortField.value,
-      sortDirection: currentSortDirection.value,
-    });
+    setSkip(newSkip); // Обновляем skip в ordersTableStore
+    // Watcher отловит изменение currentSkip и вызовет fetchOrders()
   }
 };
 
 const goToNextPage = () => {
   if (currentPage.value < totalPages.value - 1) {
     const newSkip = currentSkip.value + currentLimit.value;
-    fetchOrders({
-      skip: newSkip,
-      limit: currentLimit.value,
-      // Передаем текущие параметры сортировки и фильтрации при пагинации
-      showEnded: ordersTableStore.showEndedOrders,
-      sortField: currentSortField.value,
-      sortDirection: currentSortDirection.value,
-    });
+    setSkip(newSkip); // Обновляем skip в ordersTableStore
+    // Watcher отловит изменение currentSkip и вызовет fetchOrders()
   }
 };
+
+// Обработчик изменения лимита на странице
+const handleLimitChange = (limit: number) => {
+  setLimit(limit); // Обновляем limit в ordersTableStore
+  setSkip(0); // Сбрасываем на первую страницу при смене лимита
+  // Watcher отловит изменения и вызовет fetchOrders()
+}
+
+// Обработчик изменения сортировки
+const handleSortClick = (field: string, event: MouseEvent) => {
+  // Проверяем, был ли клик совершен внутри SelectButton
+  // Используем event.target.closest() для проверки, является ли кликнутый элемент или его родитель
+  // частью компонента SelectButton (у него есть базовый класс p-selectbutton)
+  if ((event.target as HTMLElement).closest('.p-selectbutton')) {
+    console.log('Click originated from SelectButton, preventing sort.');
+    return; // Если клик из SelectButton, останавливаем выполнение сортировки
+  }
+
+  // Если клик не из SelectButton, выполняем логику сортировки
+  setSort(field); // Обновляем поле и направление сортировки в ordersTableStore
+  setSkip(0); // Обычно сбрасываем на первую страницу при смене сортировки
+  // Watcher отловит изменения и вызовет fetchOrders()
+}
+
+// Обработчик изменения фильтра по статусу (для SelectButton)
+const handleStatusFilterChange = () => {
+  // setFilterStatus(statusId); // setFilterStatus в сторе уже содержит логику toggle
+  // V-model на SelectButton уже обновил currentFilterStatus.
+  // Watcher отловит изменение currentFilterStatus и вызовет fetchOrders().
+  // Если нужна логика сброса skip при фильтрации, добавьте ее сюда:
+  setSkip(0);
+}
 
 
 // Классы для заголовков таблицы (<th>)
@@ -341,6 +372,7 @@ const handleCustomerChange = async (orderId: string, customerId: number) => {
     console.log(`Заказчик для заказа ${orderId} изменен на ${customerId}`);
 
     // Используем существующий метод updateOrder, передавая только изменение customer_id
+    // updateOrder в ordersStore сам обновит список заказов после успешного изменения
     await ordersStore.updateOrder(orderId, {customer_id: customerId});
 
     // Показываем уведомление об успехе через PrimeVue Toast
@@ -372,7 +404,8 @@ const handlePriorityChange = async (orderId: string, priority: number | null) =>
   try {
     console.log(`Приоритет для заказа ${orderId} изменен на ${priority}`);
 
-    // Используем существующий метод updateOrder
+    // Используем существующий метод updateOrder.
+    // updateOrder в ordersStore сам обновит список заказов
     await ordersStore.updateOrder(orderId, {priority});
 
     // Показываем уведомление об успехе через PrimeVue Toast
@@ -420,14 +453,14 @@ const priorityOptions = [
 
 
 // Состояние для диалога изменения названия
-const showNameEditDialog = ref(false); // Оставить эту строку
-const selectedOrderForNameEdit = ref<{ id: string | null, name: string }>({id: null, name: ''}); // Изменить тип и инициализацию
+const showNameEditDialog = ref(false);
+const selectedOrderForNameEdit = ref<{ id: string | null, name: string }>({id: null, name: ''});
 
 /**
- + * Открывает диалог изменения названия заказа
- + * @param orderId - ID заказа
- + * @param currentName - Текущее название заказа
- + */
+ * Открывает диалог изменения названия заказа
+ * @param orderId - ID заказа
+ * @param currentName - Текущее название заказа
+ */
 const openNameEditDialog = (orderId: string, currentName: string) => {
   selectedOrderForNameEdit.value = {id: orderId, name: currentName};
   showNameEditDialog.value = true;
@@ -438,10 +471,10 @@ const openNameEditDialog = (orderId: string, currentName: string) => {
  * Обработчик успешного обновления названия заказа из диалога
  */
 const handleNameUpdated = async () => {
-  // Здесь уже не нужно вызывать ordersStore.updateOrder или показывать toast,
-  // так как это делает OrderNameEditDialog.
-  // И обновлять список заказов не надо тоже, это реализовано в ordersStore.updateOrder
-  console.log("заказ будет обновлен")
+  // updateOrder в ordersStore уже вызван из диалога и обновил список заказов
+  console.log("Заказ обновлен через диалог OrderNameEditDialog");
+  // Нет необходимости вызывать fetchOrders() или показывать toast здесь,
+  // так как это уже сделано в логике updateOrder в ordersStore.
 };
 
 // Обработчик отмены редактирования названия
@@ -453,7 +486,6 @@ const handleNameEditCancel = () => {
 // --- State for Works Edit Dialog ---
 const showWorksEditDialog = ref(false);
 const selectedOrderForWorksEdit = ref<{ id: string | null, workIds: number[] }>({id: null, workIds: []});
-const worksStore = useWorksStore(); // <-- Получаем экземпляр works store
 
 
 /**
@@ -468,7 +500,7 @@ const openWorksEditDialog = (orderId: string, currentWorks: { id: number, name?:
   };
   // Предзагрузка списка работ, если он пуст (проверяем основной массив 'works')
   // Это запасной вариант, так как fetchWorks вызывается в onMounted
-  if (worksStore.works.length === 0 && !worksStore.isLoading) { // <--- FIX HERE
+  if (worksStore.works.length === 0 && !worksStore.isLoading) {
     worksStore.fetchWorks();
   }
   showWorksEditDialog.value = true;
@@ -481,6 +513,8 @@ const openWorksEditDialog = (orderId: string, currentWorks: { id: number, name?:
  */
 const handleWorksUpdated = async () => {
   enableScroll(); // Восстанавливаем прокрутку
+  // updateOrder в ordersStore уже вызван из диалога и обновил список заказов
+  console.log("Работы заказа обновлены через диалог OrderWorksEditDialog");
 };
 
 // Обработчик отмены редактирования списка работ
@@ -488,8 +522,7 @@ const handleWorksEditCancel = () => {
   enableScroll(); // Восстанавливаем прокрутку
 };
 
-// Опции для статуса (копируем из OrderCreateForm для консистентности,
-// в идеале это может быть вынесено в store или общий файл констант)
+// Опции для статуса
 const statusOptions = [
   {value: 1, label: 'Не определён'},
   {value: 2, label: 'На согласовании'},
@@ -511,7 +544,8 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
   try {
     console.log(`Статус для заказа ${orderId} изменен на ${statusId}`);
 
-    // Используем существующий метод updateOrder
+    // Используем существующий метод updateOrder.
+    // updateOrder в ordersStore сам обновит список заказов
     await ordersStore.updateOrder(orderId, {status_id: statusId});
 
     // Показываем уведомление об успехе через PrimeVue Toast
@@ -540,7 +574,28 @@ const statusFilterButtons = [
   {label: 'НС', statusId: 2, tooltip: 'На согласовании'},
   {label: 'ВР', statusId: 3, tooltip: 'В работе'},
   {label: 'Пр', statusId: 4, tooltip: 'Просрочено'},
+  // Добавьте другие статусы, если нужно фильтровать по ним
+  // {label: 'ВВ', statusId: 5, tooltip: 'Выполнено в срок'},
+  // {label: 'ВН', statusId: 6, tooltip: 'Выполнено НЕ в срок'},
+  // {label: 'НС', statusId: 7, tooltip: 'Не согласовано'},
+  // {label: 'Пз', statusId: 8, tooltip: 'На паузе'},
 ];
+
+// Обработчик сброса состояния таблицы и данных
+const handleResetTableAndData = () => {
+  resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
+  resetOrders(); // Сбрасываем данные заказов в ordersStore
+  // Watcher сработает после сброса состояния таблицы и вызовет fetchOrders()
+}
+
+// Опции для выбора лимита на странице
+const limitOptions = [
+  { label: '10', value: 10 },
+  { label: '25', value: 25 },
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+];
+
 </script>
 
 
@@ -587,8 +642,9 @@ const statusFilterButtons = [
     <div v-if="!isLoading && error" :class="errorBlockClass">
       <span>Ошибка: {{ error }}</span>
       <div>
+
         <button
-            @click="fetchOrders({ skip: currentSkip, limit: currentLimit})"
+            @click="fetchOrders()"
             :class="errorRepeatButtonClass"
         >
           Повторить
@@ -618,7 +674,8 @@ const statusFilterButtons = [
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
 
-              <span class="flex items-center">
+              <span class="flex items-center space-x-4">
+
                 <SelectButton
                     v-model="showEndedOrders"
                     :options="orderVisibilityOptions"
@@ -627,6 +684,22 @@ const statusFilterButtons = [
                     aria-labelledby="orders-visibility-label"
                     class="text-sm"
                 />
+
+                 <Select
+                     v-model="currentLimit"
+                     :options="limitOptions"
+                     optionLabel="label"
+                     optionValue="value"
+                     @change="handleLimitChange(currentLimit)"
+                     class="w-24 text-sm"
+                 />
+                 <Button
+                     @click="handleResetTableAndData"
+                     label="Сброс"
+                     severity="secondary"
+                     outlined
+                     class="text-sm"
+                 />
               </span>
 
 
@@ -651,8 +724,7 @@ const statusFilterButtons = [
         </tr>
         <tr>
 
-
-          <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('serial')">
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('serial', $event)">
             <div class="flex items-center">
               Номер
               <span class="ml-1">
@@ -661,11 +733,9 @@ const statusFilterButtons = [
             </div>
           </th>
 
-
           <th :class="thClasses">Заказчик</th>
 
-
-          <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('priority')">
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('priority', $event)">
             <div class="flex items-center">
               Приоритет
               <span class="ml-1">
@@ -678,40 +748,39 @@ const statusFilterButtons = [
           <th :class="thClasses">Виды работ</th>
 
 
-          <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('status')">
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('status_id', $event)">
             <div class="flex items-center justify-between">
-        <span class="flex items-center">
-          Статус
-          <span class="ml-1">
-            <i :class="getSortIcon('status')"></i>
-          </span>
-        </span>
-          <span class="flex items-center space-x-1">
-          <SelectButton
-              v-model="currentFilterStatus"
-              :options="statusFilterButtons"
-              optionLabel="label"
-              optionValue="statusId"
-              aria-labelledby="status-filter-label"
-              class="text-sm"
-          />
-        </span>
+              <span class="flex items-center">
+                Статус
+                <span class="ml-1">
+                  <i :class="getSortIcon('status_id')"></i>
+                </span>
+              </span>
+              <span class="flex items-center space-x-1">
 
-
+                <SelectButton
+                    v-model="currentFilterStatus"
+                    :options="statusFilterButtons"
+                    optionLabel="label"
+                    optionValue="statusId"
+                    aria-labelledby="status-filter-label"
+                    class="text-sm"
+                    @change="handleStatusFilterChange()"
+                />
+              </span>
             </div>
           </th>
         </tr>
         </thead>
         <tbody>
         <template v-for="order in orders" :key="order.serial">
-
           <tr :class="trBaseClass">
 
             <td
                 class="px-4 py-2 cursor-pointer transition duration-300"
                 :class="[
-                    tdNumberHoverClass, // computed для hover
-                    tdBaseTextClass, // computed для базового текста
+                    tdNumberHoverClass,
+                    tdBaseTextClass,
                     { 'font-bold': [1, 2, 3, 4, 8].includes(order.status_id) }
                 ]"
                 :style="{ color: getStatusColor(order.status_id, currentTheme) }"
@@ -737,7 +806,6 @@ const statusFilterButtons = [
                   :autoFilterFocus="true"
                   @change="handleCustomerChange(order.serial, order.customer_id)"
               >
-
                 <template #value="slotProps">
                   <div v-if="slotProps.value" class="flex items-center">
                     <div>
@@ -749,10 +817,9 @@ const statusFilterButtons = [
                     </div>
                   </div>
                   <span v-else>
-                    {{ order.customer }}
-                  </span>
+                     {{ order.customer }}
+                   </span>
                 </template>
-
 
                 <template #option="slotProps">
                   <div class="flex items-center">
@@ -761,6 +828,8 @@ const statusFilterButtons = [
                 </template>
               </Select>
             </td>
+
+
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
                   v-model="order.priority"
@@ -780,7 +849,7 @@ const statusFilterButtons = [
                   </div>
                 </template>
                 <template #value="slotProps">
-                  <div v-if="slotProps.value" class="flex items-center">
+                  <div v-if="slotProps.value !== null" class="flex items-center">
                     <div class="w-3 h-3 rounded-full mr-2"
                          :class="`priority-indicator priority-${slotProps.value}`"></div>
                     <span>{{ priorityOptions.find(opt => opt.value === slotProps.value)?.label }}</span>
@@ -800,6 +869,7 @@ const statusFilterButtons = [
               </div>
             </td>
 
+
             <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors"
                 :class="tdBaseTextClass"
                 @click="openWorksEditDialog(order.serial, order.works)">
@@ -810,10 +880,10 @@ const statusFilterButtons = [
                 <div v-else class="text-xs text-gray-400 italic">
                   Нет работ
                 </div>
-
                 <i class="ml-2 text-xs opacity-30 flex-shrink-0"></i>
               </div>
             </td>
+
 
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
@@ -825,7 +895,6 @@ const statusFilterButtons = [
                   class="w-full"
                   @change="handleStatusChange(order.serial, order.status_id)"
               >
-
                 <template #value="slotProps">
                    <span v-if="slotProps.value" :style="{ color: getStatusColor(slotProps.value, currentTheme) }">
                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
@@ -842,7 +911,6 @@ const statusFilterButtons = [
                 </template>
               </Select>
             </td>
-
           </tr>
 
 
@@ -853,12 +921,9 @@ const statusFilterButtons = [
             <td colspan="6" :class="detailsContainerClass" style="position: relative;">
 
               <div v-if="isDetailLoading" class="absolute inset-0 flex justify-center items-center z-10">
-
                 <div class="absolute inset-0 backdrop-blur-sm"
                      :class="currentTheme === 'dark' ? 'bg-gray-900 bg-opacity-40' : 'bg-white bg-opacity-50'">
                 </div>
-
-
                 <div class="z-20 px-4 py-2 rounded-lg shadow-lg flex items-center"
                      :class="currentTheme === 'dark' ? 'bg-gray-800' : 'bg-white'">
                   <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mr-2"></div>
@@ -868,25 +933,22 @@ const statusFilterButtons = [
                 </div>
               </div>
 
-
               <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
                 <OrderCommentBlock
                     :order_serial="order.serial"
                     :comments="currentOrderDetail?.comments || []"
                     :theme="currentTheme"
                 />
-
                 <div class="flex flex-col gap-4">
-
                   <OrderDateBlock
                       :order="currentOrderDetail || {}"
                       :theme="currentTheme"
                       :detailBlockClass="detailBlockClass"
                       :detailHeaderClass="detailHeaderClass"
                       :tdBaseTextClass="tdBaseTextClass"
+                      :order-serial="order.serial"
                   />
-
-
                   <OrderFinanceBlock
                       :finance="currentOrderDetail || {}"
                       :theme="currentTheme"
@@ -896,8 +958,11 @@ const statusFilterButtons = [
                       :order-serial="order.serial"
                   />
                 </div>
-
-                <TaskList :tasks="currentOrderDetail?.tasks || []" :theme="currentTheme"/>
+                <TaskList
+                    :tasks="currentOrderDetail?.tasks || []"
+                    :theme="currentTheme"
+                    :order-serial="order.serial"
+                />
               </div>
             </td>
           </tr>
@@ -926,7 +991,6 @@ const statusFilterButtons = [
         </button>
       </div>
 
-
       <div v-if="!isLoading && orders.length > 0" :class="totalInfoTextClass">
         Показано {{ orders.length }} из {{ totalOrders }} заказов.
       </div>
@@ -943,7 +1007,6 @@ const statusFilterButtons = [
 </template>
 
 <style scoped>
-
 /* Добавляем стили для модального окна PrimeVue Dialog с использованием v-bind */
 :deep(.p-dialog) {
   border-radius: 8px;
