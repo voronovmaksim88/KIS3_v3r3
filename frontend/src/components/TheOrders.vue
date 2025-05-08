@@ -759,8 +759,20 @@ const limitOptions = [
                     optionValue="statusId"
                     aria-labelledby="status-filter-label"
                     class="text-sm"
-                    @change="handleStatusFilterChange()"
-                />
+                    @change="handleStatusFilterChange"
+                >
+                  <template #option="slotProps">
+                    <span
+                        class="px-2 py-1 rounded border"
+                        :style="{
+                          color: getStatusColor(slotProps.option.statusId, currentTheme),
+                          borderColor: getStatusColor(slotProps.option.statusId, currentTheme)
+                        }"
+                    >
+                      {{ slotProps.option.label }}
+                    </span>
+                  </template>
+                </SelectButton>
               </span>
             </div>
           </th>
