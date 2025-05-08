@@ -46,7 +46,7 @@ export interface typeFetchOrdersParams {
     showEnded?: boolean;
     sortField?: string; // поле для сортировки
     sortDirection?: string; // направление для сортировки
-    filter_status?: number | null;
+    filter_status?: number | null; // фильтрация по статусу
 }
 
 // Типы для вложенных структур

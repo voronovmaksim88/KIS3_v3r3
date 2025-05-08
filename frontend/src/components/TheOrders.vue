@@ -29,6 +29,7 @@ import Select from 'primevue/select'; // Импортируем компонен
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 
+
 // всплывающие уведомления
 const toast = useToast();
 
@@ -52,16 +53,23 @@ const {
   currentSkip,
   currentOrderDetail,
   isDetailLoading,
+  currentSortField, //
+  currentSortDirection, //
+  currentFilterStatus, //
 } = storeToRefs(ordersStore);
 
 // Действия можно извлекать напрямую
-const {fetchOrders, clearError, fetchOrderDetail, resetOrderDetail, resetOrders} = ordersStore;
+const {
+  fetchOrders,
+  clearError,
+  fetchOrderDetail,
+  resetOrderDetail,
+  resetOrders,
+  setFilterStatus, //
+} = ordersStore;
 
 // Состояние для модального окна создания заказа
 const showCreateDialog = ref(false);
-
-// для сортировки
-const {currentSortField, currentSortDirection} = storeToRefs(ordersStore);
 
 // Добавляем store контрагентов
 const counterpartyStore = useCounterpartyStore();
@@ -526,6 +534,14 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
     });
   }
 };
+
+// Опции для кнопок фильтрации по статусу
+const statusFilterButtons = [
+  { label: 'НО', statusId: 1, tooltip: 'Не определён' },
+  { label: 'НС', statusId: 2, tooltip: 'На согласовании' },
+  { label: 'ВР', statusId: 3, tooltip: 'В работе' },
+  { label: 'Пр', statusId: 4, tooltip: 'Просрочено' },
+];
 </script>
 
 
@@ -665,12 +681,33 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
 
 
           <th :class="thClasses" class="cursor-pointer" @click="ordersStore.setSortField('status')">
-            <div class="flex items-center">
-              Статус
-              <span class="ml-1">
+            <div class="flex items-center justify-between">
+        <span class="flex items-center">
+          Статус
+          <span class="ml-1">
+            <i :class="getSortIcon('status')"></i>
+          </span>
+        </span>
 
-                <i :class="getSortIcon('status')"></i>
-              </span>
+
+              <span class="flex items-center space-x-1">
+          <Button
+              v-for="button in statusFilterButtons"
+              :key="button.statusId"
+              :label="button.label"
+              severity="secondary"
+              size="small"
+              text
+              rounded
+              :class="{
+                  'bg-blue-500 text-white hover:bg-blue-600': currentFilterStatus === button.statusId,
+                  'bg-transparent text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-500': currentFilterStatus !== button.statusId
+              }"
+              @click.stop="setFilterStatus(button.statusId)"
+          />
+        </span>
+
+
             </div>
           </th>
         </tr>
