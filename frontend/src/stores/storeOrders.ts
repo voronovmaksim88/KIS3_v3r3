@@ -27,8 +27,6 @@ export const useOrdersStore = defineStore('orders', () => {
     const currentSortDirection = ref<string>('asc');    // Направление сортировки
     const newOrderSerial = ref<string>('');             // Сгенерированный серийный номер для нового заказа
     const error = ref<string | null>(null);             // Общая ошибка стора (можно разделить при необходимости)
-
-    // --- НОВОЕ СОСТОЯНИЕ для фильтрации по статусу ---
     const currentFilterStatus = ref<number | null>(null);
 
     // --- Флаги загрузки ---
@@ -197,7 +195,7 @@ export const useOrdersStore = defineStore('orders', () => {
         }
     };
 
-    // --- НОВОЕ ДЕЙСТВИЕ для установки фильтра по статусу ---
+    // --- ДЕЙСТВИЕ для установки фильтра по статусу ---
     const setFilterStatus = async (statusId: number | null) => {
         // Проверяем, если нажатый статус уже является текущим фильтром
         if (currentFilterStatus.value === statusId) {
@@ -368,7 +366,7 @@ export const useOrdersStore = defineStore('orders', () => {
         fetchOrders, fetchOrderDetail, fetchNewOrderSerial, fetchOrderSerials,
         createOrder, updateOrder, setSortField, clearError, getStatusText,
         resetOrders, resetOrderDetail, resetOrderSerials, resetSorting,
-        setFilterStatus, // --- НОВОЕ ДЕЙСТВИЕ ---
+        setFilterStatus,
 
         // Вычисляемые свойства (Getters/Computed)
         isLoading,          // Основной флаг загрузки
