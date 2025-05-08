@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Query, Body
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, cast, Integer
+from sqlalchemy import select, func, case, cast, Integer, desc, asc
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
@@ -124,7 +124,7 @@ async def read_orders(
         search_customer: Optional[str] = Query(None,
                                                description="Search by customer name (case-insensitive, partial match)"),
         search_priority: Optional[int] = Query(None, description="Search by exact priority value"),
-        sort_field: str = Query("serial", description="Field to sort by: 'serial' or 'priority'"),
+        sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
         sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
         session: AsyncSession = Depends(get_async_db)
 ):
@@ -137,35 +137,27 @@ async def read_orders(
     - Если False, исключает заказы со статусами 5, 6, 7 (завершенные)
 
     Параметры сортировки:
-    - sort_field: поле для сортировки ('serial' или 'priority')
+    - sort_field: поле для сортировки ('serial', 'priority' или 'status')
     - sort_order: направление сортировки
-      - 'asc' - по возрастанию (для serial: старые заказы сначала; для priority: низкий приоритет сначала)
-      - 'desc' - по убыванию (для serial: новые заказы сначала; для priority: высокий приоритет сначала)
+      - 'asc' - по возрастанию
+      - 'desc' - по убыванию
     """
 
-    # Запрос с жадной загрузкой связей
     query = select(Order).options(
         selectinload(Order.customer).selectinload(Counterparty.form),
         selectinload(Order.works)
     )
-
-    # Запрос для подсчета
     count_query = select(func.count(Order.serial))
 
-    # --- Применение JOIN для ФИЛЬТРАЦИИ ---
     if search_customer:
-        query = query.join(Order.customer)
-        count_query = count_query.join(Order.customer)
+        query = query.join(Order.customer.and_(Counterparty.id == Order.customer_id))
+        count_query = count_query.join(Order.customer.and_(Counterparty.id == Order.customer_id))
 
-    # --- Применение фильтров и поиска ---
-
-    # Фильтрация завершенных заказов
     if show_ended is False:
         completed_statuses = [5, 6, 7]
         query = query.where(~Order.status_id.in_(completed_statuses))
         count_query = count_query.where(~Order.status_id.in_(completed_statuses))
 
-    # Применение остальных фильтров
     if status_id is not None:
         query = query.where(Order.status_id == status_id)
         count_query = count_query.where(Order.status_id == status_id)
@@ -182,98 +174,97 @@ async def read_orders(
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
 
-    # --- Выполнение запроса на подсчет общего количества ---
     total_result = await session.execute(count_query)
     total = total_result.scalar_one_or_none() or 0
 
-    # --- Применение сортировки и пагинации. ---
-    # Определяем порядок сортировки на основе параметров sort_field и sort_direction
-    is_ascending = sort_direction.lower() != "desc"  # True для "asc", False для "desc"
+    is_ascending_direction = sort_direction.lower() != "desc"
+
+    # Вспомогательная функция для выражений сортировки по серийному номеру (дате создания)
+    def get_serial_sort_expressions(ascending_order=True):
+        direction_func = asc if ascending_order else desc
+        return [
+            direction_func(cast(func.substring(Order.serial, 9, 4), Integer)),  # Year
+            direction_func(cast(func.substring(Order.serial, 5, 2), Integer)),  # Month
+            direction_func(cast(func.substring(Order.serial, 1, 3), Integer))  # Number in year
+        ]
 
     if sort_field.lower() == "priority":
-        # Сортировка по приоритету
-        # Учитываем, что приоритет может быть NULL, поэтому размещаем NULL значения в конце
-        # Для заказов с одинаковым приоритетом сортируем по дате создания (серийному номеру)
-        if is_ascending:
-            # Низкий приоритет сначала, NULL в конце
+        # --- ВОЗВРАЩЕНА ВАША ЛОГИКА СОРТИРОВКИ ПО ПРИОРИТЕТУ ---
+        # Вторичная сортировка по дате создания (старые заказы сначала)
+        # для одинаковых приоритетов.
+        secondary_serial_sort_asc = get_serial_sort_expressions(ascending_order=True)
+
+        if is_ascending_direction:  # Низкий приоритет сначала
             query = query.order_by(
                 Order.priority.is_(None).asc(),  # NULL в конце
                 Order.priority.asc(),
-                # Вторичная сортировка по дате создания (серийный номер)
-                cast(func.substring(Order.serial, 9, 4), Integer).asc(),
-                cast(func.substring(Order.serial, 5, 2), Integer).asc(),
-                cast(func.substring(Order.serial, 1, 3), Integer).asc()
+                *secondary_serial_sort_asc  # Распаковка списка выражений
             )
-        else:
-            # Высокий приоритет сначала, NULL в конце
+        else:  # Высокий приоритет сначала
             query = query.order_by(
                 Order.priority.is_(None).asc(),  # NULL в конце
                 Order.priority.desc(),
-                # Вторичная сортировка по дате создания (серийный номер)
-                cast(func.substring(Order.serial, 9, 4), Integer).asc(),
-                cast(func.substring(Order.serial, 5, 2), Integer).asc(),
-                cast(func.substring(Order.serial, 1, 3), Integer).asc()
+                *secondary_serial_sort_asc  # Распаковка списка выражений
             )
-    else:
-        # Сортировка по серийному номеру (используется по умолчанию)
-        if is_ascending:
-            # Старые заказы сначала
-            query = query.order_by(
-                cast(func.substring(Order.serial, 9, 4), Integer).asc(),
-                cast(func.substring(Order.serial, 5, 2), Integer).asc(),
-                cast(func.substring(Order.serial, 1, 3), Integer).asc()
-            )
-        else:
-            # Новые заказы сначала
-            query = query.order_by(
-                cast(func.substring(Order.serial, 9, 4), Integer).desc(),
-                cast(func.substring(Order.serial, 5, 2), Integer).desc(),
-                cast(func.substring(Order.serial, 1, 3), Integer).desc()
-            )
+        # --- КОНЕЦ ВАШЕЙ ЛОГИКИ СОРТИРОВКИ ПО ПРИОРИТЕТУ ---
 
-    # Применяем пагинацию
+    elif sort_field.lower() == "status":
+        status_custom_order = case(
+            {4: 1, 3: 2, 2: 3, 1: 4, 8: 5, 5: 6, 6: 7, 7: 8},
+            value=Order.status_id,
+            else_=99
+        )
+
+        primary_status_sort_expr = asc(status_custom_order) if is_ascending_direction else desc(status_custom_order)
+
+        # Вторичная сортировка: старые заказы сначала, независимо от направления сортировки статусов
+        secondary_serial_sort_asc = get_serial_sort_expressions(ascending_order=True)
+
+        query = query.order_by(
+            primary_status_sort_expr,
+            *secondary_serial_sort_asc  # Распаковка списка выражений
+        )
+
+    else:  # По умолчанию сортировка по серийному номеру (sort_field == "serial" или любое другое значение)
+        query = query.order_by(*get_serial_sort_expressions(ascending_order=is_ascending_direction))
+
     query = query.offset(skip).limit(limit)
 
-    # --- Выполнение основного запроса ---
     result = await session.execute(query)
     orders_orm = result.scalars().unique().all()
 
-    # --- Ручное формирование списка данных для ответа ---
     orders_data_list = []
-    for order in orders_orm:
-        # Формируем строку customer с проверками
+    for order_orm_item in orders_orm:
         customer_display_name = "Контрагент не указан"
-        if order.customer:
-            if order.customer.form:
-                customer_display_name = f"{order.customer.form.name} {order.customer.name}"
+        if order_orm_item.customer:
+            if order_orm_item.customer.form:
+                customer_display_name = f"{order_orm_item.customer.form.name} {order_orm_item.customer.name}"
             else:
-                customer_display_name = order.customer.name
+                customer_display_name = order_orm_item.customer.name
 
-        # Создаем словарь для Pydantic модели OrderRead
         order_data = {
-            "serial": order.serial,
-            "name": order.name,
+            "serial": order_orm_item.serial,
+            "name": order_orm_item.name,
             "customer": customer_display_name,
-            "customer_id": order.customer_id,
-            "priority": order.priority,
-            "status_id": order.status_id,
-            "start_moment": order.start_moment,
-            "deadline_moment": order.deadline_moment,
-            "end_moment": order.end_moment,
-            "materials_cost": order.materials_cost,
-            "materials_paid": order.materials_paid,
-            "products_cost": order.products_cost,
-            "products_paid": order.products_paid,
-            "work_cost": order.work_cost,
-            "work_paid": order.work_paid,
-            "debt": order.debt,
-            "debt_paid": order.debt_paid,
-            "works": order.works,
+            "customer_id": order_orm_item.customer_id,
+            "priority": order_orm_item.priority,
+            "status_id": order_orm_item.status_id,
+            "start_moment": order_orm_item.start_moment,
+            "deadline_moment": order_orm_item.deadline_moment,
+            "end_moment": order_orm_item.end_moment,
+            "materials_cost": order_orm_item.materials_cost,
+            "materials_paid": order_orm_item.materials_paid,
+            "products_cost": order_orm_item.products_cost,
+            "products_paid": order_orm_item.products_paid,
+            "work_cost": order_orm_item.work_cost,
+            "work_paid": order_orm_item.work_paid,
+            "debt": order_orm_item.debt,
+            "debt_paid": order_orm_item.debt_paid,
+            "works": order_orm_item.works,
         }
-
+        # Предполагается, что OrderRead - это ваша Pydantic модель
         orders_data_list.append(OrderRead.model_validate(order_data))
 
-    # --- Возврат результата ---
     return PaginatedOrderResponse(
         total=total,
         limit=limit,
@@ -544,7 +535,7 @@ async def create_order(
         serial=new_order.serial,
         name=new_order.name,
         customer=customer_display_name,  # Передаем строку, как ожидает OrderResponse -> OrderRead
-        customer_id = new_order.customer_id,
+        customer_id=new_order.customer_id,
         priority=new_order.priority,
         status_id=new_order.status_id,
         start_moment=new_order.start_moment,
