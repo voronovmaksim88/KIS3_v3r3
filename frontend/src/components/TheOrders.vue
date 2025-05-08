@@ -1,4 +1,4 @@
-
+<!-- src/components/TheOrders.vue -->
 <script setup lang="ts">
 import {onMounted, ref, computed} from 'vue';
 import {watch} from 'vue';
@@ -6,6 +6,9 @@ import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
 import {useOrdersTableStore} from '@/stores/storeOrdersTable'; // Импорт нового стора
 import {getStatusColor} from "@/utils/getStatusColor";
+
+// Импортируем типы
+import { OrderSortField } from '@/types/typeOrder'; //  для сортировки
 
 // импорт других сторов
 import {useThemeStore} from '../stores/storeTheme';
@@ -177,16 +180,7 @@ onMounted(() => {
   // Загружаем работы
   worksStore.fetchWorks();
 
-  // Загружаем данные
-  fetchOrders({
-    skip: 0,
-    limit: 50,
-    // Добавляем сюда текущее состояние фильтра showEndedOrders при первой загрузке
-    showEnded: ordersTableStore.showEndedOrders,
-    // Добавляем сюда текущее состояние сортировки при первой загрузке
-    sortField: currentSortField.value,
-    sortDirection: currentSortDirection.value,
-  });
+
 });
 
 // Функции для пагинации (вызывают setSkip в ordersTableStore)
@@ -214,7 +208,7 @@ const handleLimitChange = (limit: number) => {
 }
 
 // Обработчик изменения сортировки
-const handleSortClick = (field: string, event: MouseEvent) => {
+const handleSortClick = (field: OrderSortField, event: MouseEvent) => {
   // Проверяем, был ли клик совершен внутри SelectButton
   // Используем event.target.closest() для проверки, является ли кликнутый элемент или его родитель
   // частью компонента SelectButton (у него есть базовый класс p-selectbutton)
@@ -348,7 +342,7 @@ const errorHideButtonClass = computed(() => {
 
 
 // Функция для определения иконки сортировки
-const getSortIcon = (field: string) => {
+const getSortIcon = (field: OrderSortField): string => {
   if (currentSortField.value === field) {
     return currentSortDirection.value === 'asc' ? 'pi pi-sort-up' : 'pi pi-sort-down';
   }
@@ -578,7 +572,7 @@ const statusFilterButtons = [
   // {label: 'ВВ', statusId: 5, tooltip: 'Выполнено в срок'},
   // {label: 'ВН', statusId: 6, tooltip: 'Выполнено НЕ в срок'},
   // {label: 'НС', statusId: 7, tooltip: 'Не согласовано'},
-  // {label: 'Пз', statusId: 8, tooltip: 'На паузе'},
+  {label: 'НП', statusId: 8, tooltip: 'На паузе'},
 ];
 
 // Обработчик сброса состояния таблицы и данных
@@ -748,12 +742,12 @@ const limitOptions = [
           <th :class="thClasses">Виды работ</th>
 
 
-          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('status_id', $event)">
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('status', $event)">
             <div class="flex items-center justify-between">
               <span class="flex items-center">
                 Статус
                 <span class="ml-1">
-                  <i :class="getSortIcon('status_id')"></i>
+                  <i :class="getSortIcon('status')"></i>
                 </span>
               </span>
               <span class="flex items-center space-x-1">

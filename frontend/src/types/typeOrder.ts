@@ -1,4 +1,4 @@
-// src/type/typeOrder.ts
+// src/types/typeOrder.ts
 import { typeTask} from "@/types/typeTask.ts";
 
 export interface typeOrderSerial {
@@ -35,18 +35,28 @@ export interface typePaginatedOrderResponse {
     data: typeOrderRead[];
 }
 
+// --- ВЫНЕСЕННЫЕ ТИПЫ ДЛЯ СОРТИРОВКИ ---
+// определяем возможные поля сортировки для заказов, как указано в описании API
+export type OrderSortField = 'serial' | 'priority' | 'status'; // Используем 'status' согласно описанию API
+
+// Определяем возможные направления сортировки
+export type OrderSortDirection = 'asc' | 'desc';
+// --- КОНЕЦ ВЫНЕСЕННЫХ ТИПОВ ---
+
+
 // тип для параметров запроса fetchOrders
 export interface typeFetchOrdersParams {
     skip?: number;
     limit?: number;
-    statusId?: number | null;
+    statusId?: number | null; // Используем это для фильтрации, маппится в queryParams.status_id
     searchSerial?: string | null;
     searchCustomer?: string | null;
     searchPriority?: number | null;
     showEnded?: boolean;
-    sortField?: string; // поле для сортировки
-    sortDirection?: string; // направление для сортировки
-    filter_status?: number | null; // фильтрация по статусу
+    // Используем вынесенные типы для полей и направлений сортировки
+    sortField?: OrderSortField;
+    sortDirection?: OrderSortField;
+    filter_status?: number | null; // фильтрация по статусу (дублирует statusId? Уточните API)
 }
 
 // Типы для вложенных структур
@@ -114,8 +124,10 @@ export interface typeOrderCreate {
     products_cost?: number | null;
     products_paid?: boolean;
     work_cost?: number | null;
+    work_cost_fact?: number | null; // Добавлено
     work_paid?: boolean;
     debt?: number | null;
+    debt_fact?: number | null; // Добавлено
     debt_paid?: boolean;
     work_ids?: number[];
 }
@@ -126,7 +138,7 @@ export interface typeOrderEdit {
     customer_id?: number | null;
     priority?: number | null;
     status_id?: number;
-    start_moment?: string | null; // Возможно не используется бэкендом
+    start_moment?: string | null;
     deadline_moment?: string | null;
     end_moment?: string | null;
     materials_cost?: number | null;

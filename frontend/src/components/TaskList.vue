@@ -1,4 +1,4 @@
-<!-- TaskList.vue -->
+<!-- src/components/TaskList.vue -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { typeTask } from '@/types/typeTask';
