@@ -123,11 +123,12 @@ const handleCreateCancel = () => {
   enableScroll(); // Восстанавливаем прокрутку
 }
 
-
+// функция поиска по заказам
 function findOrders() {
-  // Функциональность поиска может быть добавлена позже
-  // Когда будет добавлена, она тоже должна будет вызывать ordersTableStore.setSkip(0)
-  // и ordersStore.fetchOrders()
+  if (!searchCustomerInput.value.trim()) return;
+
+  ordersTableStore.setSkip(0);
+  ordersStore.fetchOrders({ searchCustomer: searchCustomerInput.value });
 }
 
 // для хранения серийного номера заказа, чья дополнительная строка должна быть показана.
@@ -577,6 +578,7 @@ const statusFilterButtons = [
 
 // Обработчик сброса состояния таблицы и данных
 const handleResetTableAndData = () => {
+  searchCustomerInput.value = ''; // Сбрасываем значение поиска по заказчикам
   resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
   resetOrders(); // Сбрасываем данные заказов в ordersStore
   // Watcher сработает после сброса состояния таблицы и вызовет fetchOrders()
@@ -590,7 +592,23 @@ const limitOptions = [
   { label: '100', value: 100 },
 ];
 
+// Реактивное поле поиска по заказчику
+const searchCustomerInput = ref<string>('');
+
+// поиск по нажатию enter
+watch(
+    () => searchCustomerInput.value,
+    (newVal) => {
+      if (!newVal?.trim()) {
+        // Можно вызвать fetchOrders без фильтра
+        ordersStore.fetchOrders();
+      }
+    }
+);
+
 </script>
+
+
 
 
 <template>
@@ -700,12 +718,13 @@ const limitOptions = [
               <span class="flex">
                   <Button
                       @click="findOrders"
-                      :label="'Поиск'"
+                      label="Поиск"
                       severity="secondary"
-                      :disabled="'true'"
+                      :disabled="!searchCustomerInput.trim()"
                       raised
                       class="mr-2"
                   />
+
                   <Button
                       @click="addNewOrder"
                       :label="'Добавить'"
@@ -727,7 +746,16 @@ const limitOptions = [
             </div>
           </th>
 
-          <th :class="thClasses">Заказчик</th>
+          <th :class="thClasses">
+            Заказчик
+            <div class="mt-2">
+              <InputText
+                  v-model="searchCustomerInput"
+                  placeholder="Поиск по заказчику"
+                  class="w-full text-sm font-medium"
+              />
+            </div>
+          </th>
 
           <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('priority', $event)">
             <div class="flex items-center">
@@ -738,7 +766,10 @@ const limitOptions = [
             </div>
           </th>
 
-          <th :class="thClasses">Название</th>
+          <th :class="thClasses">
+            Название
+          </th>
+
           <th :class="thClasses">Виды работ</th>
 
 
