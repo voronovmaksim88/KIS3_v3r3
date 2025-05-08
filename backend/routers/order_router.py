@@ -126,6 +126,7 @@ async def read_orders(
         search_priority: Optional[int] = Query(None, description="Search by exact priority value"),
         sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
         sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
+        filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
         session: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -173,6 +174,11 @@ async def read_orders(
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
+
+    if filter_status is not None:
+        # Применяем фильтрацию по указанному status_id
+        query = query.where(Order.status_id == filter_status)
+        count_query = count_query.where(Order.status_id == filter_status)
 
     total_result = await session.execute(count_query)
     total = total_result.scalar_one_or_none() or 0
