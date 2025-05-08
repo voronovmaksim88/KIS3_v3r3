@@ -2,7 +2,7 @@
 
 <script setup lang="ts">
 import {onMounted, ref, computed} from 'vue';
-import { watch } from 'vue'; // Добавьте watch
+import {watch} from 'vue'; // Добавьте watch
 import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
 import {getStatusColor} from "@/utils/getStatusColor"; // Убедитесь, что этот импорт есть и функция доступна
@@ -10,8 +10,8 @@ import {getStatusColor} from "@/utils/getStatusColor"; // Убедитесь, ч
 // импорт сторов
 import {useThemeStore} from '../stores/storeTheme';
 import {useCounterpartyStore} from '@/stores/storeCounterparty'; // Импортируем store контрагентов
-import { useWorksStore } from "@/stores/storeWorks"; // <-- Импорт works store если еще не импортирован
-import { useOrdersTableStore } from '@/stores/storeOrdersTable'; // Импорт нового стора
+import {useWorksStore} from "@/stores/storeWorks"; // <-- Импорт works store если еще не импортирован
+import {useOrdersTableStore} from '@/stores/storeOrdersTable'; // Импорт нового стора
 
 // мои компоненты
 import OrderCreateForm from '@/components/OrderCreateForm.vue'; // Импорт нашего нового компонента
@@ -65,7 +65,6 @@ const {
   fetchOrderDetail,
   resetOrderDetail,
   resetOrders,
-  setFilterStatus, //
 } = ordersStore;
 
 // Состояние для модального окна создания заказа
@@ -453,7 +452,7 @@ const handleNameEditCancel = () => {
 
 // --- State for Works Edit Dialog ---
 const showWorksEditDialog = ref(false);
-const selectedOrderForWorksEdit = ref<{ id: string | null, workIds: number[] }>({ id: null, workIds: [] });
+const selectedOrderForWorksEdit = ref<{ id: string | null, workIds: number[] }>({id: null, workIds: []});
 const worksStore = useWorksStore(); // <-- Получаем экземпляр works store
 
 
@@ -513,7 +512,7 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
     console.log(`Статус для заказа ${orderId} изменен на ${statusId}`);
 
     // Используем существующий метод updateOrder
-    await ordersStore.updateOrder(orderId, { status_id: statusId });
+    await ordersStore.updateOrder(orderId, {status_id: statusId});
 
     // Показываем уведомление об успехе через PrimeVue Toast
     toast.add({
@@ -537,10 +536,10 @@ const handleStatusChange = async (orderId: string, statusId: number) => {
 
 // Опции для кнопок фильтрации по статусу
 const statusFilterButtons = [
-  { label: 'НО', statusId: 1, tooltip: 'Не определён' },
-  { label: 'НС', statusId: 2, tooltip: 'На согласовании' },
-  { label: 'ВР', statusId: 3, tooltip: 'В работе' },
-  { label: 'Пр', statusId: 4, tooltip: 'Просрочено' },
+  {label: 'НО', statusId: 1, tooltip: 'Не определён'},
+  {label: 'НС', statusId: 2, tooltip: 'На согласовании'},
+  {label: 'ВР', statusId: 3, tooltip: 'В работе'},
+  {label: 'Пр', statusId: 4, tooltip: 'Просрочено'},
 ];
 </script>
 
@@ -566,7 +565,6 @@ const statusFilterButtons = [
         @update-works="handleWorksUpdated"
         @cancel="handleWorksEditCancel"
     />
-
 
 
     <transition name="fade">
@@ -688,22 +686,14 @@ const statusFilterButtons = [
             <i :class="getSortIcon('status')"></i>
           </span>
         </span>
-
-
-              <span class="flex items-center space-x-1">
-          <Button
-              v-for="button in statusFilterButtons"
-              :key="button.statusId"
-              :label="button.label"
-              severity="secondary"
-              size="small"
-              text
-              rounded
-              :class="{
-                  'bg-blue-500 text-white hover:bg-blue-600': currentFilterStatus === button.statusId,
-                  'bg-transparent text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-500': currentFilterStatus !== button.statusId
-              }"
-              @click.stop="setFilterStatus(button.statusId)"
+          <span class="flex items-center space-x-1">
+          <SelectButton
+              v-model="currentFilterStatus"
+              :options="statusFilterButtons"
+              optionLabel="label"
+              optionValue="statusId"
+              aria-labelledby="status-filter-label"
+              class="text-sm"
           />
         </span>
 
