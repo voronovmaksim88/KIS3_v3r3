@@ -695,6 +695,9 @@ const searchSerialInput = ref<string>('');
           <col style="width: 20%">
         </colgroup>
         <thead>
+
+
+        <!--строка с кнопка управления на самом верху таблицы-->
         <tr>
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
@@ -748,8 +751,10 @@ const searchSerialInput = ref<string>('');
             </div>
           </th>
         </tr>
-        <tr>
 
+
+        <!--строка с заголовками таблицы-->
+        <tr>
           <th
               :class="thClasses"
               class="cursor-pointer"
@@ -766,24 +771,10 @@ const searchSerialInput = ref<string>('');
                 <i :class="getSortIcon('serial')"></i>
               </span>
             </div>
-            <div class="mt-2">
-              <InputText
-                  v-model="searchSerialInput"
-                  placeholder="Поиск"
-                  class="w-full text-sm font-medium"
-              />
-            </div>
           </th>
 
           <th :class="thClasses">
             Заказчик
-            <div class="mt-2">
-              <InputText
-                  v-model="searchCustomerInput"
-                  placeholder="Поиск по заказчику"
-                  class="w-full text-sm font-medium"
-              />
-            </div>
           </th>
 
           <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('priority', $event)">
@@ -810,6 +801,62 @@ const searchSerialInput = ref<string>('');
                   <i :class="getSortIcon('status')"></i>
                 </span>
               </span>
+            </div>
+          </th>
+        </tr>
+
+
+
+
+        <!--строка с поисками и фильтрами-->
+        <tr>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => {
+                // Проверяем, был ли клик по самому элементу input
+                if ((event.target as HTMLElement).tagName !== 'INPUT') {
+                  handleSortClick('serial', event);
+                }
+              }"
+          >
+            <div class="mt-2">
+              <InputText
+                  v-model="searchSerialInput"
+                  placeholder="Поиск"
+                  class="w-full text-sm font-medium"
+              />
+            </div>
+          </th>
+
+          <th :class="thClasses">
+            <div class="mt-2">
+              <InputText
+                  v-model="searchCustomerInput"
+                  placeholder="Поиск по заказчику"
+                  class="w-full text-sm font-medium"
+              />
+            </div>
+          </th>
+
+          <!--поиск по названию-->
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('priority', $event)">
+            <div class="flex items-center">
+            </div>
+          </th>
+
+          <!--поиск по названию-->
+          <th :class="thClasses">
+
+          </th>
+
+          <!--поиск по видам работ-->
+          <th :class="thClasses">
+          </th>
+
+
+          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('status', $event)">
+            <div class="flex items-center justify-between">
               <span class="flex items-center space-x-1">
 
                 <SelectButton
@@ -837,6 +884,8 @@ const searchSerialInput = ref<string>('');
             </div>
           </th>
         </tr>
+
+
         </thead>
         <tbody>
         <template v-for="order in orders" :key="order.serial">
