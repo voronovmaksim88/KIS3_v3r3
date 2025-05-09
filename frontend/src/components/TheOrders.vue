@@ -30,6 +30,7 @@ import SelectButton from 'primevue/selectbutton';
 import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
+import ToggleSwitch from 'primevue/toggleswitch';
 
 
 // всплывающие уведомления
@@ -125,19 +126,19 @@ const handleCreateCancel = () => {
 
 // функция поиска по заказам
 function findOrders() {
-  const searchParams: { search_customer?: string; search_serial?: string } = {};
-  if (searchCustomerInput.value.trim()) {
-    searchParams.search_customer = searchCustomerInput.value.trim();
-  }
-  if (searchSerialInput.value.trim()) {
-    searchParams.search_serial = searchSerialInput.value.trim();
-  }
+  const hasInput = searchCustomerInput.value.trim() || searchSerialInput.value.trim();
 
-  ordersTableStore.setSkip(0);
-  ordersStore.fetchOrders({
-    searchSerial: searchSerialInput.value,
-    searchCustomer: searchCustomerInput.value,
-  });
+  if (!hasInput) {
+    showSearchRow.value = !showSearchRow.value;
+  } else if (hasInput) {
+    ordersTableStore.setSkip(0);
+    ordersStore.fetchOrders({
+      searchSerial: searchSerialInput.value,
+      searchCustomer: searchCustomerInput.value,
+    });
+  } else {
+    showSearchRow.value = false; // Скрываем строку, если поля пустые
+  }
 }
 
 
@@ -364,6 +365,12 @@ const getSortIcon = (field: OrderSortField): string => {
 const orderVisibilityOptions = [
   {label: 'Активные', value: false},
   {label: 'Все заказы', value: true}
+];
+
+// Опции для переключателя видимости заказов
+const orderSearchOptions = [
+  {label: '0', value: false},
+  {label: '1', value: true}
 ];
 
 
@@ -620,6 +627,8 @@ watch(
 // Реактивное поле поиска по номеру заказа
 const searchSerialInput = ref<string>('');
 
+// Управляет отображением строки поиска
+const showSearchRow = ref(false);
 
 </script>
 
@@ -704,23 +713,37 @@ const searchSerialInput = ref<string>('');
 
               <span class="flex items-center space-x-4">
 
+                <!--переключатель заказов все/активные-->
                 <SelectButton
                     v-model="showEndedOrders"
                     :options="orderVisibilityOptions"
                     optionLabel="label"
                     optionValue="value"
-                    aria-labelledby="orders-visibility-label"
                     class="text-sm"
                 />
 
-                 <Select
-                     v-model="currentLimit"
-                     :options="limitOptions"
-                     optionLabel="label"
-                     optionValue="value"
-                     @change="handleLimitChange(currentLimit)"
-                     class="w-24 text-sm"
-                 />
+                <!--переключатель поиска-->
+                <SelectButton
+                    v-model="showSearchRow"
+                    :options="orderSearchOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    ariaLabelledby="orders-visibility-label"
+                    class="text-sm"
+                />
+
+
+
+                <!--переключатель количества строк таблицы-->
+                <Select
+                   v-model="currentLimit"
+                   :options="limitOptions"
+                   optionLabel="label"
+                   optionValue="value"
+                   @change="handleLimitChange(currentLimit)"
+                   class="w-24 text-sm"
+                />
+
                  <Button
                      @click="handleResetTableAndData"
                      label="Сброс"
@@ -730,13 +753,26 @@ const searchSerialInput = ref<string>('');
                  />
               </span>
 
+              <div class="flex align-items-center">
+                <label for="toggle" class="mr-3">Завершённые:</label>
+                <ToggleSwitch
+                    id="toggle"
+                    v-model="showEndedOrders"
+                >
+                  <template #handle>
+                      <span class="switch-label">
+                        {{ showEndedOrders ? 'I' : '0' }}
+                      </span>
+                  </template>
+                </ToggleSwitch>
+              </div>
+
 
               <span class="flex">
                   <Button
-                      @click="findOrders"
+                      @click="findOrders()"
                       label="Поиск"
                       severity="secondary"
-                      :disabled="!searchCustomerInput.trim() && !searchSerialInput.trim()"
                       raised
                       class="mr-2"
                   />
@@ -806,10 +842,8 @@ const searchSerialInput = ref<string>('');
         </tr>
 
 
-
-
         <!--строка с поисками и фильтрами-->
-        <tr>
+        <tr v-if="showSearchRow">
           <th
               :class="thClasses"
               class="cursor-pointer"
