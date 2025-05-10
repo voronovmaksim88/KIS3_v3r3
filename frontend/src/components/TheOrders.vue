@@ -30,7 +30,7 @@ import SelectButton from 'primevue/selectbutton';
 import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
-import MyToggle from "@/components/MyToggle.vue";
+import {Checkbox} from "primevue";
 
 
 // всплывающие уведомления
@@ -126,19 +126,11 @@ const handleCreateCancel = () => {
 
 // функция поиска по заказам
 function findOrders() {
-  const hasInput = searchCustomerInput.value.trim() || searchSerialInput.value.trim();
-
-  if (!hasInput) {
-    showSearchRow.value = !showSearchRow.value;
-  } else if (hasInput) {
     ordersTableStore.setSkip(0);
     ordersStore.fetchOrders({
       searchSerial: searchSerialInput.value,
       searchCustomer: searchCustomerInput.value,
     });
-  } else {
-    showSearchRow.value = false; // Скрываем строку, если поля пустые
-  }
 }
 
 
@@ -599,7 +591,7 @@ const handleResetTableAndData = () => {
   searchCustomerInput.value = ''; // Сбрасываем значение поиска по заказчикам
   resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
   resetOrders(); // Сбрасываем данные заказов в ordersStore
-  // Watcher сработает после сброса состояния таблицы и вызовет fetchOrders()
+  fetchOrders();
 }
 
 // Опции для выбора лимита на странице
@@ -712,47 +704,45 @@ const showSearchRow = ref(false);
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
 
-              <span class="">
-
-                <!--переключатель заказов все/активные-->
-                  <MyToggle
-                      v-model="showEndedOrders"
-                      left-label="Активные"
-                      right-label="Завершённые"
-                      size="small"
-                      class="ml-8"
-                  >
-                  </MyToggle>
-
-                <!--переключатель поиска-->
-                  <MyToggle
-                      v-model="showSearchRow"
-                      label="поиск"
-                      left-label="Нет"
-                      right-label="Да"
-                      size="small"
-                      class="ml-8"
-                  >
-                  </MyToggle>
-
-                <!--переключатель количества строк таблицы-->
-                <Select
-                   v-model="currentLimit"
-                   :options="limitOptions"
-                   optionLabel="label"
-                   optionValue="value"
-                   @change="handleLimitChange(currentLimit)"
-                   class="w-24 text-sm"
+              <div class="card flex flex-wrap justify-left gap-4">
+              <!--чекбокс заказов все/активные-->
+              <div class="flex items-center gap-2">
+                <label for="ingredient1"> Завершённые </label>
+                <Checkbox
+                    v-model="showEndedOrders"
+                    binary
                 />
+              </div>
 
-                 <Button
-                     @click="handleResetTableAndData"
-                     label="Сброс"
-                     severity="secondary"
-                     outlined
-                     class="text-sm"
-                 />
-              </span>
+              <!--чекбокс поиска-->
+              <div class="flex items-center gap-2">
+                <label for="ingredient1"> Поиск </label>
+                <Checkbox
+                    v-model="showSearchRow"
+                    binary
+                />
+              </div>
+
+
+              <!--переключатель количества строк таблицы-->
+              <Select
+                  v-model="currentLimit"
+                  :options="limitOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  @change="handleLimitChange(currentLimit)"
+                  class="w-24 text-sm"
+              />
+
+              <Button
+                  @click="handleResetTableAndData"
+                  label="Сброс"
+                  severity="secondary"
+                  outlined
+                  class="text-sm"
+              />
+              </div>
+
 
               <span class="flex">
                   <Button
