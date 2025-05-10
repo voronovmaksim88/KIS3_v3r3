@@ -715,17 +715,17 @@ const showSearchRow = ref(false);
               <span class="">
 
                 <!--переключатель заказов все/активные-->
-                  <my-toggle
+                  <MyToggle
                       v-model="showEndedOrders"
                       left-label="Активные"
                       right-label="Завершённые"
                       size="small"
                       class="ml-8"
                   >
-                  </my-toggle>
+                  </MyToggle>
 
                 <!--переключатель поиска-->
-                  <my-toggle
+                  <MyToggle
                       v-model="showSearchRow"
                       label="поиск"
                       left-label="Нет"
@@ -733,7 +733,7 @@ const showSearchRow = ref(false);
                       size="small"
                       class="ml-8"
                   >
-                  </my-toggle>
+                  </MyToggle>
 
                 <!--переключатель количества строк таблицы-->
                 <Select

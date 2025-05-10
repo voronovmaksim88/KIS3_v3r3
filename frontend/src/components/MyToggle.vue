@@ -142,21 +142,21 @@ const wrapperStyles = computed(() => {
 <style scoped>
 .toggle-switch-wrapper {
   display: inline-flex;
-  align-items: center; /* Уже было */
-  min-height: 100%; /* Добавить */
-  vertical-align: middle; /* Добавить */
+  align-items: center;
+  min-height: 100%;
+  vertical-align: middle;
 }
 
 .toggle-switch-label {
   color: #333;
   font-weight: 500;
-  display: inline-flex; /* Добавить */
-  align-items: center; /* Добавить */
+  display: inline-flex;
+  align-items: center;
 }
 
 .toggle-switch-container {
   display: inline-flex;
-  align-items: center; /* Добавить */
+  align-items: center;
 }
 
 .toggle-switch-label.disabled {
@@ -194,6 +194,7 @@ const wrapperStyles = computed(() => {
   transition: all 0.3s ease;
   color: #666;
   white-space: nowrap;
+  position: relative; /* Добавлено */
 }
 
 .option.active {
@@ -205,6 +206,7 @@ const wrapperStyles = computed(() => {
   width: 50%;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   left: 3px;
+  z-index: 0; /* Добавлено: убедиться, что переключатель находится под опциями */
 }
 
 input:checked + .slider .switch {
