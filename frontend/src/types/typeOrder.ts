@@ -52,6 +52,7 @@ export interface typeFetchOrdersParams {
     searchSerial?: string | null;
     searchCustomer?: string | null;
     searchPriority?: number | null;
+    searchName?: string | null;
     showEnded?: boolean;
     // Используем вынесенные типы для полей и направлений сортировки
     sortField?: OrderSortField;

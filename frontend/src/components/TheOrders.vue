@@ -90,10 +90,23 @@ const {
 // Состояние для модального окна создания заказа
 const showCreateDialog = ref(false);
 
-// Добавляем store контрагентов
+// store контрагентов
 const counterpartyStore = useCounterpartyStore();
-// Добавляем store работ
+
+// store работ
 const worksStore = useWorksStore();
+
+// Реактивное поле поиска по заказчику
+const searchCustomerInput = ref<string>('');
+
+// Реактивное поле поиска по номеру заказа
+const searchSerialInput = ref<string>('');
+
+// Управляет отображением строки поиска
+const showSearchRow = ref(false);
+
+// Реактивное поле поиска по названию заказа
+const searchNameInput = ref<string>('');
 
 
 // Методы для управления прокруткой страницы
@@ -130,6 +143,7 @@ function findOrders() {
     ordersStore.fetchOrders({
       searchSerial: searchSerialInput.value,
       searchCustomer: searchCustomerInput.value,
+      searchName: searchNameInput.value,
       searchPriority: searchPriorityInput.value
     });
 }
@@ -607,14 +621,6 @@ const limitOptions = [
   {label: '100', value: 100},
 ];
 
-// Реактивное поле поиска по заказчику
-const searchCustomerInput = ref<string>('');
-
-// Реактивное поле поиска по номеру заказа
-const searchSerialInput = ref<string>('');
-
-// Управляет отображением строки поиска
-const showSearchRow = ref(false);
 
 // Watch для отслеживания изменения showSearchRow
 watch(
@@ -768,7 +774,10 @@ const searchPriorityInput = ref<number | null>(null);
               <span class="flex">
                 <Button
                     @click="findOrders"
-                    :disabled="isLoading || (searchSerialInput.trim() === '' && searchCustomerInput.trim() === '' && searchPriorityInput === null)"
+                    :disabled="isLoading || (searchSerialInput.trim() === '' &&
+                      searchCustomerInput.trim() === '' &&
+                      searchPriorityInput === null &&
+                       searchNameInput.trim() === '')"
                     severity="secondary"
                     raised
                     class="mr-2 flex items-center gap-2"
@@ -892,7 +901,13 @@ const searchPriorityInput = ref<number | null>(null);
 
           <!--поиск по названию-->
           <th :class="thClasses">
-
+            <div class="mt-2">
+              <InputText
+                  v-model="searchNameInput"
+                  placeholder="Поиск по названию"
+                  class="w-full text-sm font-medium"
+              />
+            </div>
           </th>
 
           <!--поиск по видам работ-->
@@ -1129,7 +1144,7 @@ const searchPriorityInput = ref<number | null>(null);
           </tr>
         </template>
 
-        <tr>
+        <tr v-if="orders.length === 0 && !isLoading && !error">
           <td
               colspan="6"
               class="py-6 text-center text-lg text-gray-400 italic"

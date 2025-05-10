@@ -79,11 +79,10 @@ export const useOrdersStore = defineStore('orders', () => {
         queryParams.show_ended = params.showEnded !== undefined ? params.showEnded : ordersTableStore.showEndedOrders;
         queryParams.status_id = params.statusId !== undefined ? params.statusId : ordersTableStore.currentFilterStatus;
 
-
         if (params.searchSerial !== undefined && params.searchSerial !== null) queryParams.search_serial = params.searchSerial;
         if (params.searchCustomer !== undefined && params.searchCustomer !== null) queryParams.search_customer = params.searchCustomer;
         if (params.searchPriority !== undefined && params.searchPriority !== null) queryParams.search_priority = params.searchPriority;
-
+        if (params.searchName !== undefined && params.searchName !== null) queryParams.search_name = params.searchName;
 
         try {
             const response = await axios.get<typePaginatedOrderResponse>(`${getApiUrl()}order/read`, {
