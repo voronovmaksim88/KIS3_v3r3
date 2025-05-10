@@ -184,6 +184,9 @@ onMounted(() => {
   // Загружаем работы
   worksStore.fetchWorks();
 
+  // загружаем заказы
+  fetchOrders();
+
 
 });
 
@@ -622,7 +625,27 @@ const searchSerialInput = ref<string>('');
 // Управляет отображением строки поиска
 const showSearchRow = ref(false);
 
+// Watch для отслеживания изменения showSearchRow
+watch(
+    () => showSearchRow.value,
+    (newVal) => {
+      if (!newVal) {
+        // Очищаем поля поиска
+        searchSerialInput.value = '';
+        searchCustomerInput.value = '';
 
+        // Сбрасываем фильтр по статусу
+        currentFilterStatus.value = null;
+
+
+        // Сбрасываем параметры фильтрации/поиска в сторе (если нужно)
+        ordersTableStore.setSkip(0);
+
+        // Обновляем список заказов
+        fetchOrders();
+      }
+    }
+);
 </script>
 
 
@@ -700,14 +723,18 @@ const showSearchRow = ref(false);
 
 
         <!--строка управления на самом верху таблицы-->
-        <tr :class="thClasses">
+        <tr
+            :class="thClasses"
+
+        >
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
 
-              <div class="card flex flex-wrap justify-left gap-4">
+              <div class="card flex flex-wrap justify-left gap-4 font-medium">
+
               <!--чекбокс заказов все/активные-->
               <div class="flex items-center gap-2">
-                <label for="ingredient1"> Завершённые </label>
+                <label class="class='text-middle'"> Завершённые </label>
                 <Checkbox
                     v-model="showEndedOrders"
                     binary
@@ -716,7 +743,7 @@ const showSearchRow = ref(false);
 
               <!--чекбокс поиска-->
               <div class="flex items-center gap-2">
-                <label for="ingredient1"> Поиск </label>
+                <label > Поиск </label>
                 <Checkbox
                     v-model="showSearchRow"
                     binary
@@ -751,6 +778,7 @@ const showSearchRow = ref(false);
                       severity="secondary"
                       raised
                       class="mr-2"
+                      :disabled="searchSerialInput === '' && searchCustomerInput === ''"
                   />
 
                   <Button
