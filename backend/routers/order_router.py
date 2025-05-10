@@ -124,6 +124,8 @@ async def read_orders(
         search_customer: Optional[str] = Query(None,
                                                description="Search by customer name (case-insensitive, partial match)"),
         search_priority: Optional[int] = Query(None, description="Search by exact priority value"),
+        search_name: Optional[str] = Query(None,
+                                           description="Search by order name (case-insensitive, partial match)"),  # <-- NEW PARAMETER
         sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
         sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
         filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
@@ -174,6 +176,10 @@ async def read_orders(
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
+
+    if search_name:  # ЛОГИКА ФИЛЬТРАЦИИ ПО ИМЕНИ ЗАКАЗА
+        query = query.where(Order.name.ilike(f"%{search_name}%"))
+        count_query = count_query.where(Order.name.ilike(f"%{search_name}%"))
 
     if filter_status is not None:
         # Применяем фильтрацию по указанному status_id
@@ -277,7 +283,6 @@ async def read_orders(
         skip=skip,
         data=orders_data_list
     )
-
 
 @router.get("/detail/{serial}", response_model=OrderDetailResponse)
 async def get_order_detail(
