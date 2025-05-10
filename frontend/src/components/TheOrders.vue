@@ -130,6 +130,7 @@ function findOrders() {
     ordersStore.fetchOrders({
       searchSerial: searchSerialInput.value,
       searchCustomer: searchCustomerInput.value,
+      searchPriority: searchPriorityInput.value
     });
 }
 
@@ -592,6 +593,7 @@ const statusFilterButtons = [
 const handleResetTableAndData = () => {
   searchSerialInput.value = ''; // Сбрасываем значение поиска по номерам
   searchCustomerInput.value = ''; // Сбрасываем значение поиска по заказчикам
+  searchPriorityInput.value = null; // Сбрасываем значение поиска по приоритетам
   resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
   resetOrders(); // Сбрасываем данные заказов в ordersStore
   fetchOrders();
@@ -608,17 +610,6 @@ const limitOptions = [
 // Реактивное поле поиска по заказчику
 const searchCustomerInput = ref<string>('');
 
-// поиск по нажатию enter
-watch(
-    () => searchCustomerInput.value,
-    (newVal) => {
-      if (!newVal?.trim()) {
-        // Можно вызвать fetchOrders без фильтра
-        ordersStore.fetchOrders();
-      }
-    }
-);
-
 // Реактивное поле поиска по номеру заказа
 const searchSerialInput = ref<string>('');
 
@@ -633,6 +624,7 @@ watch(
         // Очищаем поля поиска
         searchSerialInput.value = '';
         searchCustomerInput.value = '';
+        searchPriorityInput.value = null;
 
         // Сбрасываем фильтр по статусу
         currentFilterStatus.value = null;
@@ -646,6 +638,8 @@ watch(
       }
     }
 );
+
+const searchPriorityInput = ref<number | null>(null);
 </script>
 
 
@@ -772,14 +766,19 @@ watch(
 
 
               <span class="flex">
-                  <Button
-                      @click="findOrders()"
-                      label="Поиск"
-                      severity="secondary"
-                      raised
-                      class="mr-2"
-                      :disabled="searchSerialInput === '' && searchCustomerInput === ''"
-                  />
+                <Button
+                    @click="findOrders"
+                    :disabled="isLoading || (searchSerialInput.trim() === '' && searchCustomerInput.trim() === '' && searchPriorityInput === null)"
+                    severity="secondary"
+                    raised
+                    class="mr-2 flex items-center gap-2"
+                >
+                  <span v-if="isLoading">
+                    <!-- Простой спиннер -->
+                    <i class="pi pi-spin pi-spinner text-sm"></i>
+                  </span>
+                  <span>Поиск</span>
+                </Button>
 
                   <Button
                       @click="addNewOrder"
@@ -877,9 +876,17 @@ watch(
             </div>
           </th>
 
-          <!--поиск по названию-->
-          <th :class="thClasses" class="cursor-pointer" @click="handleSortClick('priority', $event)">
-            <div class="flex items-center">
+          <!--поиск по приоритету-->
+          <th :class="thClasses">
+            <div class="mt-2">
+              <Select
+                  v-model="searchPriorityInput"
+                  :options="priorityOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Любой"
+                  class="w-full text-sm font-medium"
+              />
             </div>
           </th>
 
@@ -983,6 +990,7 @@ watch(
             </td>
 
 
+            <!-- приоритет заказа -->
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
                   v-model="order.priority"
@@ -1120,7 +1128,21 @@ watch(
             </td>
           </tr>
         </template>
+
+        <tr>
+          <td
+              colspan="6"
+              class="py-6 text-center text-lg text-gray-400 italic"
+              :class="currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'"
+          >
+            Заказов не найдено
+          </td>
+        </tr>
+
         </tbody>
+
+
+
       </table>
 
 
