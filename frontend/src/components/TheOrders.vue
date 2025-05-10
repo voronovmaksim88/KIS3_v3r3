@@ -31,6 +31,7 @@ import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 import ToggleSwitch from 'primevue/toggleswitch';
+import MyToggle from "@/components/MyToggle.vue";
 
 
 // всплывающие уведомления
@@ -368,10 +369,10 @@ const orderVisibilityOptions = [
 ];
 
 // Опции для переключателя видимости заказов
-const orderSearchOptions = [
-  {label: '0', value: false},
-  {label: '1', value: true}
-];
+// const orderSearchOptions = [
+//   {label: '0', value: false},
+//   {label: '1', value: true}
+// ];
 
 
 /**
@@ -630,6 +631,7 @@ const searchSerialInput = ref<string>('');
 // Управляет отображением строки поиска
 const showSearchRow = ref(false);
 
+
 </script>
 
 
@@ -711,7 +713,7 @@ const showSearchRow = ref(false);
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
 
-              <span class="flex items-center space-x-4">
+              <span class="">
 
                 <!--переключатель заказов все/активные-->
                 <SelectButton
@@ -720,19 +722,19 @@ const showSearchRow = ref(false);
                     optionLabel="label"
                     optionValue="value"
                     class="text-sm"
+                    multiple
                 />
 
                 <!--переключатель поиска-->
-                <SelectButton
-                    v-model="showSearchRow"
-                    :options="orderSearchOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    ariaLabelledby="orders-visibility-label"
-                    class="text-sm"
-                />
-
-
+                  <my-toggle
+                      v-model="showSearchRow"
+                      label="поиск"
+                      left-label="Нет"
+                      right-label="Да"
+                      size="small"
+                      class="ml-8"
+                  >
+                  </my-toggle>
 
                 <!--переключатель количества строк таблицы-->
                 <Select
