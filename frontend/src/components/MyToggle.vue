@@ -7,7 +7,7 @@ const sizes = {
     minWidth: '100px',
     padding: '3px',
     optionPadding: '5px 8px',
-    borderRadius: '10px',
+    borderRadius: '5px',
     switchHeight: '75%',
     labelGap: '8px'
   },
@@ -16,7 +16,7 @@ const sizes = {
     minWidth: '120px',
     padding: '4px',
     optionPadding: '8px 12px',
-    borderRadius: '15px',
+    borderRadius: '10px',
     switchHeight: '80%',
     labelGap: '10px'
   },
@@ -25,7 +25,7 @@ const sizes = {
     minWidth: '140px',
     padding: '5px',
     optionPadding: '8px 16px',
-    borderRadius: '20px',
+    borderRadius: '10px',
     switchHeight: '85%',
     labelGap: '12px'
   }
@@ -100,7 +100,8 @@ const switchStyles = computed(() => {
 
 const optionStyles = computed(() => {
   return {
-    padding: sizes[props.size].optionPadding
+    padding: sizes[props.size].optionPadding,
+    borderRadius: sizes[props.size].borderRadius
   };
 });
 

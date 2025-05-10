@@ -30,7 +30,6 @@ import SelectButton from 'primevue/selectbutton';
 import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
-import ToggleSwitch from 'primevue/toggleswitch';
 import MyToggle from "@/components/MyToggle.vue";
 
 
@@ -363,10 +362,10 @@ const getSortIcon = (field: OrderSortField): string => {
 };
 
 // Опции для переключателя видимости заказов
-const orderVisibilityOptions = [
-  {label: 'Активные', value: false},
-  {label: 'Все заказы', value: true}
-];
+// const orderVisibilityOptions = [
+//   {label: 'Активные', value: false},
+//   {label: 'Все заказы', value: true}
+// ];
 
 // Опции для переключателя видимости заказов
 // const orderSearchOptions = [
@@ -716,14 +715,14 @@ const showSearchRow = ref(false);
               <span class="">
 
                 <!--переключатель заказов все/активные-->
-                <SelectButton
-                    v-model="showEndedOrders"
-                    :options="orderVisibilityOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="text-sm"
-                    multiple
-                />
+                  <my-toggle
+                      v-model="showEndedOrders"
+                      left-label="Активные"
+                      right-label="Завершённые"
+                      size="small"
+                      class="ml-8"
+                  >
+                  </my-toggle>
 
                 <!--переключатель поиска-->
                   <my-toggle
@@ -754,21 +753,6 @@ const showSearchRow = ref(false);
                      class="text-sm"
                  />
               </span>
-
-              <div class="flex align-items-center">
-                <label for="toggle" class="mr-3">Завершённые:</label>
-                <ToggleSwitch
-                    id="toggle"
-                    v-model="showEndedOrders"
-                >
-                  <template #handle>
-                      <span class="switch-label">
-                        {{ showEndedOrders ? 'I' : '0' }}
-                      </span>
-                  </template>
-                </ToggleSwitch>
-              </div>
-
 
               <span class="flex">
                   <Button
