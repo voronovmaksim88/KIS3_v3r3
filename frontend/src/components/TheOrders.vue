@@ -893,9 +893,23 @@ const searchPriorityInput = ref<number | null>(null);
                   :options="priorityOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="Любой"
                   class="w-full text-sm font-medium"
-              />
+              >
+                <!-- Отображение текущего значения -->
+                <template #value="slotProps">
+                  <span v-if="slotProps.value === null">Нет</span>
+                  <span v-else>{{ slotProps.value }}</span>
+                </template>
+
+                <!-- Отображение элементов списка -->
+                <template #option="slotProps">
+                  <div class="flex items-center">
+                    <div v-if="slotProps.option.value !== null" class="w-3 h-3 rounded-full mr-2"
+                         :class="`priority-indicator priority-${slotProps.option.value}`"></div>
+                    <span>{{ slotProps.option.label }}</span>
+                  </div>
+                </template>
+              </Select>
             </div>
           </th>
 
