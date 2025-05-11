@@ -16,6 +16,9 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
 
     const currentFilterStatus = ref<number | null>(null);
 
+    // состояние для поиска по приоритету
+    const searchPriority = ref<number | null | undefined>(undefined);
+
     // Действия для управления состоянием таблицы
 
     function toggleShowEndedOrders() {
@@ -46,6 +49,11 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         }
     }
 
+    // Добавляем действие для установки значения поиска по приоритету
+    function setSearchPriority(priority: number | null | undefined) {
+        searchPriority.value = priority;
+    }
+
     function resetTableState() {
         showEndedOrders.value = false;
         currentLimit.value = 50;
@@ -54,6 +62,7 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         currentSortField.value = 'serial';
         currentSortDirection.value = 'asc';
         currentFilterStatus.value = null;
+        searchPriority.value = undefined; // сброс поиска по приоритету
     }
 
 
@@ -65,6 +74,8 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         currentSortField,
         currentSortDirection,
         currentFilterStatus,
+        searchPriority,
+
 
         // Actions
         toggleShowEndedOrders,
@@ -73,5 +84,6 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         setSort,
         setFilterStatus,
         resetTableState,
+        setSearchPriority,
     };
 });

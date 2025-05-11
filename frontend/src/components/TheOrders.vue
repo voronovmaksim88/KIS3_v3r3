@@ -65,8 +65,19 @@ const {
   currentSortField,
   currentSortDirection,
   currentFilterStatus,
-  showEndedOrders, // Это состояние тоже теперь управляется ordersTableStore
+  showEndedOrders,
+  searchPriority,
 } = storeToRefs(ordersTableStore);
+
+
+// Действия из стора таблицы заказов
+const {
+  setLimit,
+  setSkip,
+  setSort, // Новое действие для установки сортировки
+  resetTableState,
+  setSearchPriority,
+} = ordersTableStore;
 
 
 // Действия из стора заказов
@@ -77,15 +88,6 @@ const {
   resetOrderDetail,
   resetOrders, // Сбрасывает только данные заказов
 } = ordersStore;
-
-// Действия из стора таблицы заказов
-const {
-  setLimit,
-  setSkip,
-  setSort, // Новое действие для установки сортировки
-  resetTableState, // Новое действие для сброса состояния таблицы
-} = ordersTableStore;
-
 
 // Состояние для модального окна создания заказа
 const showCreateDialog = ref(false);
@@ -138,6 +140,7 @@ const handleCreateCancel = () => {
 }
 
 // функция поиска по заказам
+// обновляем функцию поиска
 function findOrders() {
   ordersTableStore.setSkip(0);
   let searchParams: any = {
@@ -146,15 +149,16 @@ function findOrders() {
     searchName: searchNameInput.value,
   };
 
-  // Если выбран null, добавляем специальный параметр
-  if (searchPriorityInput.value === null) {
+  // Используем значение из стора
+  if (searchPriority.value === null) {
     searchParams.no_priority = true;
-  } else if (searchPriorityInput.value !== undefined) {
-    searchParams.searchPriority = searchPriorityInput.value;
+  } else if (searchPriority.value !== undefined) {
+    searchParams.searchPriority = searchPriority.value;
   }
 
   ordersStore.fetchOrders(searchParams);
 }
+
 
 // для хранения серийного номера заказа, чья дополнительная строка должна быть показана.
 const expandedOrderSerial = ref<string | null>(null);
@@ -622,11 +626,11 @@ const statusFilterButtons = [
 
 // Обработчик сброса состояния таблицы и данных
 const handleResetTableAndData = () => {
-  searchSerialInput.value = ''; // Сбрасываем значение поиска по номерам
-  searchCustomerInput.value = ''; // Сбрасываем значение поиска по заказчикам
-  searchPriorityInput.value = null; // Сбрасываем значение поиска по приоритетам
-  resetTableState(); // Сбрасываем параметры отображения в ordersTableStore
-  resetOrders(); // Сбрасываем данные заказов в ordersStore
+  searchSerialInput.value = '';
+  searchCustomerInput.value = '';
+  setSearchPriority(undefined); // Используем действие из стора
+  resetTableState();
+  resetOrders();
   fetchOrders();
 }
 
@@ -640,29 +644,21 @@ const limitOptions = [
 
 
 // Watch для отслеживания изменения showSearchRow
+// Обновляем watch для showSearchRow
 watch(
     () => showSearchRow.value,
     (newVal) => {
       if (!newVal) {
-        // Очищаем поля поиска
         searchSerialInput.value = '';
         searchCustomerInput.value = '';
-        searchPriorityInput.value = null;
-
-        // Сбрасываем фильтр по статусу
+        setSearchPriority(undefined); // Используем действие из стора
         currentFilterStatus.value = null;
-
-
-        // Сбрасываем параметры фильтрации/поиска в сторе (если нужно)
         ordersTableStore.setSkip(0);
-
-        // Обновляем список заказов
         fetchOrders();
       }
     }
 );
 
-const searchPriorityInput = ref<number | null>(null);
 </script>
 
 
@@ -791,10 +787,12 @@ const searchPriorityInput = ref<number | null>(null);
               <span class="flex">
                 <Button
                     @click="findOrders"
-                    :disabled="isLoading || (searchSerialInput.trim() === '' &&
-                      searchCustomerInput.trim() === '' &&
-                      searchPriorityInput === undefined &&
-                       searchNameInput.trim() === '')"
+                    :disabled="isLoading || (
+                        searchSerialInput.trim() === '' &&
+                        searchCustomerInput.trim() === '' &&
+                        searchPriority === undefined &&
+                        searchNameInput.trim() === ''
+                    )"
                     severity="secondary"
                     raised
                     class="mr-2 flex items-center gap-2"
@@ -906,7 +904,7 @@ const searchPriorityInput = ref<number | null>(null);
           <th :class="thClasses">
             <div class="mt-2">
               <Select
-                  v-model="searchPriorityInput"
+                  v-model="searchPriority"
                   :options="priorityOptions"
                   optionLabel="label"
                   optionValue="value"
