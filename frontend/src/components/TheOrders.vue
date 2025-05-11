@@ -31,6 +31,7 @@ import Select from 'primevue/select';
 import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 import {Checkbox} from "primevue";
+import MultiSelect from 'primevue/multiselect';
 
 
 // всплывающие уведомления
@@ -52,8 +53,8 @@ const {
   isLoading,
   error,
   totalOrders,
-  currentPage, // Теперь computed в ordersStore, читает из ordersTableStore
-  totalPages,  // Теперь computed в ordersStore, читает из ordersTableStore
+  currentPage,
+  totalPages,
   currentOrderDetail,
   isDetailLoading,
 } = storeToRefs(ordersStore);
@@ -70,6 +71,7 @@ const {
   searchSerial,
   searchCustomer,
   searchName,
+  searchWorks
 } = storeToRefs(ordersTableStore);
 
 
@@ -99,6 +101,15 @@ const counterpartyStore = useCounterpartyStore();
 
 // store работ
 const worksStore = useWorksStore();
+
+
+
+const workOptions = computed(() => {
+  return worksStore.works.map(work => ({
+    id: work.id,
+    name: work.name
+  }));
+});
 
 // Управляет отображением строки поиска
 const showSearchRow = ref(false);
@@ -607,6 +618,14 @@ const limitOptions = [
   {label: '100', value: 100},
 ];
 
+
+const handleWorksSearchChange = () => {
+  ordersTableStore.setSearchWorks(searchWorks.value);
+  ordersTableStore.setSkip(0); // Сбрасываем на первую страницу
+  // Запрос будет вызван через watch с дебаунсингом
+};
+
+
 // наблюдатель, который будет обновлять noPriority на основе значения searchPriority:
 watch(
     searchPriority,
@@ -621,7 +640,7 @@ watch(
 // Переменная для хранения ID тайм-аута для дебаунсинга
 let searchDebounceTimer: number | undefined;
 watch(
-    () => [searchSerial.value, searchCustomer.value, searchName.value],
+    () => [searchSerial.value, searchCustomer.value, searchName.value, searchWorks.value],
     () => {
       // Очищаем ранее запланированный тайм-аут (если он есть)
       if (searchDebounceTimer) {
@@ -634,8 +653,7 @@ watch(
         findOrders();
       }, 500); // Выполнить findOrders через 500 мс после последнего изменения
     },
-    { flush: 'post' } // flush: 'post' в целом подходит, эта опция откладывает выполнение
-    // наблюдателя до обновления DOM компонента.
+    { flush: 'post', deep: true } // deep: true для наблюдения за массивом searchWorks
 );
 
 
@@ -772,7 +790,8 @@ watch(
                         searchSerial.trim() === '' &&
                         searchCustomer.trim() === '' &&
                         searchPriority === undefined &&
-                        searchName.trim() === ''
+                        searchName.trim() === '' &&
+                        searchWorks.length === 0
                     )"
                     severity="secondary"
                     raised
@@ -924,6 +943,27 @@ watch(
 
           <!--поиск по видам работ-->
           <th :class="thClasses">
+            <div class="mt-2">
+              <MultiSelect
+                  v-model="searchWorks"
+                  :options="workOptions"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Выберите работы"
+                  class="w-full text-sm font-medium"
+                  :loading="worksStore.isLoading"
+                  :disabled="worksStore.isLoading || worksStore.works.length === 0"
+                  filter
+                  @change="handleWorksSearchChange"
+              >
+                <template #value="slotProps">
+                  <div v-if="slotProps.value && slotProps.value.length > 0">
+                    <span>{{ slotProps.value.length }} работ выбрано</span>
+                  </div>
+                  <span v-else>Выберите работы</span>
+                </template>
+              </MultiSelect>
+            </div>
           </th>
 
 

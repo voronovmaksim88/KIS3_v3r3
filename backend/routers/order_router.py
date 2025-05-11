@@ -121,18 +121,15 @@ async def read_orders(
     limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
     show_ended: bool = Query(True, description="Show completed orders (status 5, 6, 7)"),
     status_id: Optional[int] = Query(None, description="Filter by status ID"),
-    search_serial: Optional[str] = Query(None,
-                                         description="Search by order serial (case-insensitive, partial match)"),
-    search_customer: Optional[str] = Query(None,
-                                           description="Search by customer name (case-insensitive, partial match)"),
+    search_serial: Optional[str] = Query(None, description="Search by order serial (case-insensitive, partial match)"),
+    search_customer: Optional[str] = Query(None, description="Search by customer name (case-insensitive, partial match)"),
     search_priority: Optional[int] = Query(default=None, description="Search by exact priority value"),
-    search_name: Optional[str] = Query(None,
-                                       description="Search by order name (case-insensitive, partial match)"),
-    # <-- NEW PARAMETER
+    search_name: Optional[str] = Query(None, description="Search by order name (case-insensitive, partial match)"),
     sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
     sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
     filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
     no_priority: bool = Query(False, description="Filter orders with no priority"),
+    search_works: Optional[str] = Query(None, description="Filter by work IDs (comma-separated, e.g., 1,2,3)"),
     session: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -148,13 +145,27 @@ async def read_orders(
     - sort_order: направление сортировки
       - 'asc' - по возрастанию
       - 'desc' - по убыванию
-    """
 
+    Параметр search_works:
+    - Фильтрует заказы, у которых есть хотя бы одна из указанных работ (ID работ передаются через запятую)
+    """
     query = select(Order).options(
         selectinload(Order.customer).selectinload(Counterparty.form),
         selectinload(Order.works)
     )
     count_query = select(func.count(Order.serial))
+
+    # Применяем JOIN для фильтрации по работам, если указан search_works
+    if search_works:
+        try:
+            work_ids = [int(wid) for wid in search_works.split(',')]
+            query = query.join(Order.works).where(Work.id.in_(work_ids))
+            count_query = count_query.join(Order.works).where(Work.id.in_(work_ids))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid format for search_works. Expected comma-separated integers (e.g., 1,2,3)"
+            )
 
     if search_customer:
         query = query.join(Order.customer.and_(Counterparty.id == Order.customer_id))
@@ -180,16 +191,15 @@ async def read_orders(
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
-    elif request.query_params.get("no_priority") == "true":  # Новый параметр
+    elif request.query_params.get("no_priority") == "true":
         query = query.where(Order.priority.is_(None))
         count_query = count_query.where(Order.priority.is_(None))
 
-    if search_name:  # ЛОГИКА ФИЛЬТРАЦИИ ПО ИМЕНИ ЗАКАЗА
+    if search_name:
         query = query.where(Order.name.ilike(f"%{search_name}%"))
         count_query = count_query.where(Order.name.ilike(f"%{search_name}%"))
 
     if filter_status is not None:
-        # Применяем фильтрацию по указанному status_id
         query = query.where(Order.status_id == filter_status)
         count_query = count_query.where(Order.status_id == filter_status)
 
@@ -198,7 +208,6 @@ async def read_orders(
 
     is_ascending_direction = sort_direction.lower() != "desc"
 
-    # Вспомогательная функция для выражений сортировки по серийному номеру (дате создания)
     def get_serial_sort_expressions(ascending_order=True):
         direction_func = asc if ascending_order else desc
         return [
@@ -208,43 +217,32 @@ async def read_orders(
         ]
 
     if sort_field.lower() == "priority":
-        # --- ВОЗВРАЩЕНА ВАША ЛОГИКА СОРТИРОВКИ ПО ПРИОРИТЕТУ ---
-        # Вторичная сортировка по дате создания (старые заказы сначала)
-        # для одинаковых приоритетов.
         secondary_serial_sort_asc = get_serial_sort_expressions(ascending_order=True)
-
-        if is_ascending_direction:  # Низкий приоритет сначала
+        if is_ascending_direction:
             query = query.order_by(
-                Order.priority.is_(None).asc(),  # NULL в конце
+                Order.priority.is_(None).asc(),
                 Order.priority.asc(),
-                *secondary_serial_sort_asc  # Распаковка списка выражений
+                *secondary_serial_sort_asc
             )
-        else:  # Высокий приоритет сначала
+        else:
             query = query.order_by(
-                Order.priority.is_(None).asc(),  # NULL в конце
+                Order.priority.is_(None).asc(),
                 Order.priority.desc(),
-                *secondary_serial_sort_asc  # Распаковка списка выражений
+                *secondary_serial_sort_asc
             )
-        # --- КОНЕЦ ВАШЕЙ ЛОГИКИ СОРТИРОВКИ ПО ПРИОРИТЕТУ ---
-
     elif sort_field.lower() == "status":
         status_custom_order = case(
             {4: 1, 3: 2, 2: 3, 1: 4, 8: 5, 5: 6, 6: 7, 7: 8},
             value=Order.status_id,
             else_=99
         )
-
         primary_status_sort_expr = asc(status_custom_order) if is_ascending_direction else desc(status_custom_order)
-
-        # Вторичная сортировка: старые заказы сначала, независимо от направления сортировки статусов
         secondary_serial_sort_asc = get_serial_sort_expressions(ascending_order=True)
-
         query = query.order_by(
             primary_status_sort_expr,
-            *secondary_serial_sort_asc  # Распаковка списка выражений
+            *secondary_serial_sort_asc
         )
-
-    else:  # По умолчанию сортировка по серийному номеру (sort_field == "serial" или любое другое значение)
+    else:
         query = query.order_by(*get_serial_sort_expressions(ascending_order=is_ascending_direction))
 
     query = query.offset(skip).limit(limit)
@@ -281,7 +279,6 @@ async def read_orders(
             "debt_paid": order_orm_item.debt_paid,
             "works": order_orm_item.works,
         }
-        # Предполагается, что OrderRead - это ваша Pydantic модель
         orders_data_list.append(OrderRead.model_validate(order_data))
 
     return PaginatedOrderResponse(
@@ -633,7 +630,7 @@ async def edit_order(
     if order_data.name is not None:
         order.name = order_data.name
 
-    if hasattr(order_data, 'priority'):
+    if order_data.priority is not None:
         order.priority = order_data.priority
 
     if order_data.deadline_moment is not None:
