@@ -363,18 +363,6 @@ const getSortIcon = (field: OrderSortField): string => {
   return 'pi pi-sort text-gray-400';
 };
 
-// Опции для переключателя видимости заказов
-// const orderVisibilityOptions = [
-//   {label: 'Активные', value: false},
-//   {label: 'Все заказы', value: true}
-// ];
-
-// Опции для переключателя видимости заказов
-// const orderSearchOptions = [
-//   {label: '0', value: false},
-//   {label: '1', value: true}
-// ];
-
 
 /**
  * Обработчик изменения заказчика заказа
@@ -620,41 +608,39 @@ const limitOptions = [
   {label: '100', value: 100},
 ];
 
-// автоматическое обновление при изменении параметров поиска:
+// наблюдатель, который будет обновлять noPriority на основе значения searchPriority:
 watch(
-    [
-      searchPriority,
-      noPriority,
-    ],
-    () => {
+    searchPriority,
+    (newPriority) => {
+      ordersTableStore.setNoPriority(newPriority === null);
       ordersTableStore.setSkip(0);
       fetchOrders();
-    },
-    { deep: true }
+    }
 );
 
+
+// Переменная для хранения ID тайм-аута для дебаунсинга
+let searchDebounceTimer: number | undefined;
 watch(
     () => [searchSerial.value, searchCustomer.value, searchName.value],
     () => {
-      // Оптимизация: откладываем запрос на 500 мс
-      setTimeout(() => {
+      // Очищаем ранее запланированный тайм-аут (если он есть)
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+      }
+
+      // Планируем новый тайм-аут
+      searchDebounceTimer = setTimeout(() => {
+        console.log('Сработал поиск с дебаунсом'); // Для отладки
         findOrders();
-      }, 500);
+      }, 500); // Выполнить findOrders через 500 мс после последнего изменения
     },
-    { flush: 'post' }
+    { flush: 'post' } // flush: 'post' в целом подходит, эта опция откладывает выполнение
+    // наблюдателя до обновления DOM компонента.
 );
 
-watch(
-    () => searchPriority.value,
-    (newVal) => {
-      if (newVal === null) {
-        ordersTableStore.setNoPriority(true);
-      } else {
-        ordersTableStore.setNoPriority(false);
-      }
-    },
-    { immediate: true }
-);
+
+
 </script>
 
 
