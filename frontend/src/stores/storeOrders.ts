@@ -7,7 +7,7 @@ import {
     typeOrderSerial,
     typeOrderRead,
     typePaginatedOrderResponse,
-    typeFetchOrdersParams,
+    // typeFetchOrdersParams,
     typeOrderDetail,
     typeOrderCreate,
     typeOrderEdit
@@ -63,56 +63,41 @@ export const useOrdersStore = defineStore('orders', () => {
     // --- Действия связанные с получением данных ---
 
     // fetchOrders теперь читает параметры отображения из storeOrdersTable
-    const fetchOrders = async (params: typeFetchOrdersParams = {}) => {
-        loading.value = true; // Используем основной флаг
+    const fetchOrders = async () => {
+        loading.value = true;
         error.value = null;
 
-        // Получаем состояние таблицы из useOrdersTableStore
         const ordersTableStore = useOrdersTableStore();
 
-        const queryParams: Record<string, any> = {};
-
-        // Используем параметры из arguments, если предоставлены, иначе из ordersTableStore
-        queryParams.skip = params.skip !== undefined ? params.skip : ordersTableStore.currentSkip;
-        queryParams.limit = params.limit !== undefined ? params.limit : ordersTableStore.currentLimit;
-        queryParams.sort_field = params.sortField !== undefined ? params.sortField : ordersTableStore.currentSortField;
-        queryParams.sort_direction = params.sortDirection !== undefined ? params.sortDirection : ordersTableStore.currentSortDirection;
-        queryParams.show_ended = params.showEnded !== undefined ? params.showEnded : ordersTableStore.showEndedOrders;
-        queryParams.status_id = params.statusId !== undefined ? params.statusId : ordersTableStore.currentFilterStatus;
-
-        if (params.searchSerial !== undefined && params.searchSerial !== null) queryParams.search_serial = params.searchSerial;
-        if (params.searchCustomer !== undefined && params.searchCustomer !== null) queryParams.search_customer = params.searchCustomer;
-        if (params.searchPriority !== undefined) {
-            // Если null, не добавляем параметр вообще
-            if (params.searchPriority !== null) {
-                queryParams.search_priority = params.searchPriority;
-            }
-        }
-        if (params.searchName !== undefined && params.searchName !== null) queryParams.search_name = params.searchName;
-        if (params.no_priority) {
-            queryParams.no_priority = true;
-        } else if (params.searchPriority !== undefined && params.searchPriority !== null) {
-            queryParams.search_priority = params.searchPriority;
-        }
+        const queryParams = {
+            skip: ordersTableStore.currentSkip,
+            limit: ordersTableStore.currentLimit,
+            sort_field: ordersTableStore.currentSortField,
+            sort_direction: ordersTableStore.currentSortDirection,
+            show_ended: ordersTableStore.showEndedOrders,
+            status_id: ordersTableStore.currentFilterStatus,
+            search_serial: ordersTableStore.searchSerial || undefined,
+            search_customer: ordersTableStore.searchCustomer || undefined,
+            search_name: ordersTableStore.searchName || undefined,
+            no_priority: ordersTableStore.noPriority,
+            search_priority: ordersTableStore.searchPriority || undefined
+        };
 
         try {
             const response = await axios.get<typePaginatedOrderResponse>(`${getApiUrl()}order/read`, {
                 params: queryParams,
                 withCredentials: true
             });
+
             orders.value = response.data.data;
             totalOrders.value = response.data.total;
-            // Важно: currentSkip и currentLimit теперь управляются storeOrdersTable,
-            // мы их здесь не обновляем. Если fetchOrders был вызван с явными params.skip/limit,
-            // это было временное переопределение для этого запроса.
-            // ordersTableStore.setSkip(queryParams.skip); // Можно явно обновить storeOrdersTable, если нужно синхронизировать
-            // ordersTableStore.setLimit(queryParams.limit); // Но лучше, чтобы storeOrdersTable управлял ими сам через свои actions
+
         } catch (err) {
             handleAxiosError(err, 'Failed to fetch orders');
             orders.value = [];
             totalOrders.value = 0;
         } finally {
-            loading.value = false; // Сбрасываем основной флаг
+            loading.value = false;
         }
     };
 

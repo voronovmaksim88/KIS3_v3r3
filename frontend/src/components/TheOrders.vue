@@ -67,6 +67,10 @@ const {
   currentFilterStatus,
   showEndedOrders,
   searchPriority,
+  searchSerial,
+  searchCustomer,
+  searchName,
+  noPriority,
 } = storeToRefs(ordersTableStore);
 
 
@@ -76,7 +80,6 @@ const {
   setSkip,
   setSort, // Новое действие для установки сортировки
   resetTableState,
-  setSearchPriority,
 } = ordersTableStore;
 
 
@@ -98,17 +101,8 @@ const counterpartyStore = useCounterpartyStore();
 // store работ
 const worksStore = useWorksStore();
 
-// Реактивное поле поиска по заказчику
-const searchCustomerInput = ref<string>('');
-
-// Реактивное поле поиска по номеру заказа
-const searchSerialInput = ref<string>('');
-
 // Управляет отображением строки поиска
 const showSearchRow = ref(false);
-
-// Реактивное поле поиска по названию заказа
-const searchNameInput = ref<string>('');
 
 
 // Методы для управления прокруткой страницы
@@ -143,20 +137,24 @@ const handleCreateCancel = () => {
 // обновляем функцию поиска
 function findOrders() {
   ordersTableStore.setSkip(0);
+
   let searchParams: any = {
-    searchSerial: searchSerialInput.value,
-    searchCustomer: searchCustomerInput.value,
-    searchName: searchNameInput.value,
+    searchSerial: searchSerial.value,
+    searchCustomer: searchCustomer.value,
+    searchName: searchName.value,
   };
 
-  // Используем значение из стора
   if (searchPriority.value === null) {
     searchParams.no_priority = true;
+    ordersTableStore.setNoPriority(true); // Установка флага noPriority
   } else if (searchPriority.value !== undefined) {
     searchParams.searchPriority = searchPriority.value;
+    ordersTableStore.setNoPriority(false); // Сброс флага
+  } else {
+    ordersTableStore.setNoPriority(false); // "Любой" — тоже не "нет"
   }
 
-  ordersStore.fetchOrders(searchParams);
+  ordersStore.fetchOrders();
 }
 
 
@@ -626,9 +624,6 @@ const statusFilterButtons = [
 
 // Обработчик сброса состояния таблицы и данных
 const handleResetTableAndData = () => {
-  searchSerialInput.value = '';
-  searchCustomerInput.value = '';
-  setSearchPriority(undefined); // Используем действие из стора
   resetTableState();
   resetOrders();
   fetchOrders();
@@ -642,23 +637,33 @@ const limitOptions = [
   {label: '100', value: 100},
 ];
 
-
-// Watch для отслеживания изменения showSearchRow
-// Обновляем watch для showSearchRow
+// автоматическое обновление при изменении параметров поиска:
 watch(
-    () => showSearchRow.value,
-    (newVal) => {
-      if (!newVal) {
-        searchSerialInput.value = '';
-        searchCustomerInput.value = '';
-        setSearchPriority(undefined); // Используем действие из стора
-        currentFilterStatus.value = null;
-        ordersTableStore.setSkip(0);
-        fetchOrders();
-      }
-    }
+    [
+      searchSerial,
+      searchCustomer,
+      searchName,
+      searchPriority,
+      noPriority,
+    ],
+    () => {
+      ordersTableStore.setSkip(0);
+      fetchOrders();
+    },
+    { deep: true }
 );
 
+watch(
+    () => searchPriority.value,
+    (newVal) => {
+      if (newVal === null) {
+        ordersTableStore.setNoPriority(true);
+      } else {
+        ordersTableStore.setNoPriority(false);
+      }
+    },
+    { immediate: true }
+);
 </script>
 
 
@@ -788,10 +793,10 @@ watch(
                 <Button
                     @click="findOrders"
                     :disabled="isLoading || (
-                        searchSerialInput.trim() === '' &&
-                        searchCustomerInput.trim() === '' &&
+                        searchSerial.trim() === '' &&
+                        searchCustomer.trim() === '' &&
                         searchPriority === undefined &&
-                        searchNameInput.trim() === ''
+                        searchName.trim() === ''
                     )"
                     severity="secondary"
                     raised
@@ -883,7 +888,7 @@ watch(
           >
             <div class="mt-2">
               <InputText
-                  v-model="searchSerialInput"
+                  v-model="searchSerial"
                   placeholder="Поиск"
                   class="w-full text-sm font-medium"
               />
@@ -893,7 +898,7 @@ watch(
           <th :class="thClasses">
             <div class="mt-2">
               <InputText
-                  v-model="searchCustomerInput"
+                  v-model="searchCustomer"
                   placeholder="Поиск по заказчику"
                   class="w-full text-sm font-medium"
               />
@@ -934,7 +939,7 @@ watch(
           <th :class="thClasses">
             <div class="mt-2">
               <InputText
-                  v-model="searchNameInput"
+                  v-model="searchName"
                   placeholder="Поиск по названию"
                   class="w-full text-sm font-medium"
               />
