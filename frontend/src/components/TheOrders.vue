@@ -137,23 +137,6 @@ const handleCreateCancel = () => {
 // обновляем функцию поиска
 function findOrders() {
   ordersTableStore.setSkip(0);
-
-  let searchParams: any = {
-    searchSerial: searchSerial.value,
-    searchCustomer: searchCustomer.value,
-    searchName: searchName.value,
-  };
-
-  if (searchPriority.value === null) {
-    searchParams.no_priority = true;
-    ordersTableStore.setNoPriority(true); // Установка флага noPriority
-  } else if (searchPriority.value !== undefined) {
-    searchParams.searchPriority = searchPriority.value;
-    ordersTableStore.setNoPriority(false); // Сброс флага
-  } else {
-    ordersTableStore.setNoPriority(false); // "Любой" — тоже не "нет"
-  }
-
   ordersStore.fetchOrders();
 }
 
@@ -640,9 +623,6 @@ const limitOptions = [
 // автоматическое обновление при изменении параметров поиска:
 watch(
     [
-      searchSerial,
-      searchCustomer,
-      searchName,
       searchPriority,
       noPriority,
     ],
@@ -651,6 +631,17 @@ watch(
       fetchOrders();
     },
     { deep: true }
+);
+
+watch(
+    () => [searchSerial.value, searchCustomer.value, searchName.value],
+    () => {
+      // Оптимизация: откладываем запрос на 500 мс
+      setTimeout(() => {
+        findOrders();
+      }, 500);
+    },
+    { flush: 'post' }
 );
 
 watch(
