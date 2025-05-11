@@ -70,7 +70,6 @@ const {
   searchSerial,
   searchCustomer,
   searchName,
-  noPriority,
 } = storeToRefs(ordersTableStore);
 
 
