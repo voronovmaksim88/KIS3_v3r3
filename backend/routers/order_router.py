@@ -1,6 +1,7 @@
 # routers/order_router.py
 from fastapi import APIRouter, Depends, Query, Body
 from fastapi import HTTPException
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, cast, Integer, desc, asc
 from sqlalchemy.orm import selectinload
@@ -115,21 +116,24 @@ async def get_order_serials(
 
 @router.get("/read", response_model=PaginatedOrderResponse)
 async def read_orders(
-        skip: int = Query(0, ge=0, description="Number of items to skip"),
-        limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
-        show_ended: bool = Query(True, description="Show completed orders (status 5, 6, 7)"),
-        status_id: Optional[int] = Query(None, description="Filter by status ID"),
-        search_serial: Optional[str] = Query(None,
-                                             description="Search by order serial (case-insensitive, partial match)"),
-        search_customer: Optional[str] = Query(None,
-                                               description="Search by customer name (case-insensitive, partial match)"),
-        search_priority: Optional[int] = Query(None, description="Search by exact priority value"),
-        search_name: Optional[str] = Query(None,
-                                           description="Search by order name (case-insensitive, partial match)"),  # <-- NEW PARAMETER
-        sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
-        sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
-        filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
-        session: AsyncSession = Depends(get_async_db)
+    request: Request,
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
+    show_ended: bool = Query(True, description="Show completed orders (status 5, 6, 7)"),
+    status_id: Optional[int] = Query(None, description="Filter by status ID"),
+    search_serial: Optional[str] = Query(None,
+                                         description="Search by order serial (case-insensitive, partial match)"),
+    search_customer: Optional[str] = Query(None,
+                                           description="Search by customer name (case-insensitive, partial match)"),
+    search_priority: Optional[int] = Query(default=None, description="Search by exact priority value"),
+    search_name: Optional[str] = Query(None,
+                                       description="Search by order name (case-insensitive, partial match)"),
+    # <-- NEW PARAMETER
+    sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
+    sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
+    filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
+    no_priority: bool = Query(False, description="Filter orders with no priority"),
+    session: AsyncSession = Depends(get_async_db)
 ):
     """
     Получить список заказов с пагинацией, фильтрацией и поиском.
@@ -176,6 +180,9 @@ async def read_orders(
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
+    elif request.query_params.get("no_priority") == "true":  # Новый параметр
+        query = query.where(Order.priority.is_(None))
+        count_query = count_query.where(Order.priority.is_(None))
 
     if search_name:  # ЛОГИКА ФИЛЬТРАЦИИ ПО ИМЕНИ ЗАКАЗА
         query = query.where(Order.name.ilike(f"%{search_name}%"))
@@ -283,6 +290,7 @@ async def read_orders(
         skip=skip,
         data=orders_data_list
     )
+
 
 @router.get("/detail/{serial}", response_model=OrderDetailResponse)
 async def get_order_detail(

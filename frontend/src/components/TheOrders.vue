@@ -139,15 +139,22 @@ const handleCreateCancel = () => {
 
 // функция поиска по заказам
 function findOrders() {
-    ordersTableStore.setSkip(0);
-    ordersStore.fetchOrders({
-      searchSerial: searchSerialInput.value,
-      searchCustomer: searchCustomerInput.value,
-      searchName: searchNameInput.value,
-      searchPriority: searchPriorityInput.value
-    });
-}
+  ordersTableStore.setSkip(0);
+  let searchParams: any = {
+    searchSerial: searchSerialInput.value,
+    searchCustomer: searchCustomerInput.value,
+    searchName: searchNameInput.value,
+  };
 
+  // Если выбран null, добавляем специальный параметр
+  if (searchPriorityInput.value === null) {
+    searchParams.no_priority = true;
+  } else if (searchPriorityInput.value !== undefined) {
+    searchParams.searchPriority = searchPriorityInput.value;
+  }
+
+  ordersStore.fetchOrders(searchParams);
+}
 
 // для хранения серийного номера заказа, чья дополнительная строка должна быть показана.
 const expandedOrderSerial = ref<string | null>(null);
@@ -466,8 +473,18 @@ const getCustomerNameById = (id: number): string => {
 
 // Опции для приоритета
 const priorityOptions = [
-  {label: 'Нет', value: null},
-  ...Array.from({length: 10}, (_, i) => ({
+  { label: 'Любой', value: undefined },
+  { label: 'Нет', value: null },
+  ...Array.from({ length: 10 }, (_, i) => ({
+    label: (i + 1).toString(),
+    value: i + 1,
+  }))
+];
+
+// Новые опции для отображения приоритета в строках таблицы
+const priorityDisplayOptions = [
+  { label: 'Нет', value: null },
+  ...Array.from({ length: 10 }, (_, i) => ({
     label: (i + 1).toString(),
     value: i + 1,
   }))
@@ -776,7 +793,7 @@ const searchPriorityInput = ref<number | null>(null);
                     @click="findOrders"
                     :disabled="isLoading || (searchSerialInput.trim() === '' &&
                       searchCustomerInput.trim() === '' &&
-                      searchPriorityInput === null &&
+                      searchPriorityInput === undefined &&
                        searchNameInput.trim() === '')"
                     severity="secondary"
                     raised
@@ -897,14 +914,16 @@ const searchPriorityInput = ref<number | null>(null);
               >
                 <!-- Отображение текущего значения -->
                 <template #value="slotProps">
-                  <span v-if="slotProps.value === null">Нет</span>
+                  <span v-if="slotProps.value === undefined">Любой</span>
+                  <span v-else-if="slotProps.value === null">Нет</span>
                   <span v-else>{{ slotProps.value }}</span>
                 </template>
 
                 <!-- Отображение элементов списка -->
                 <template #option="slotProps">
                   <div class="flex items-center">
-                    <div v-if="slotProps.option.value !== null" class="w-3 h-3 rounded-full mr-2"
+                    <div v-if="slotProps.option.value !== null && slotProps.option.value !== undefined"
+                         class="w-3 h-3 rounded-full mr-2"
                          :class="`priority-indicator priority-${slotProps.option.value}`"></div>
                     <span>{{ slotProps.option.label }}</span>
                   </div>
@@ -1020,10 +1039,11 @@ const searchPriorityInput = ref<number | null>(null);
 
 
             <!-- приоритет заказа -->
+
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
                   v-model="order.priority"
-                  :options="priorityOptions"
+                  :options="priorityDisplayOptions"
                   optionValue="value"
                   optionLabel="label"
                   placeholder="Нет"
@@ -1038,16 +1058,22 @@ const searchPriorityInput = ref<number | null>(null);
                     <span>{{ slotProps.option.label }}</span>
                   </div>
                 </template>
-                <template #value="slotProps">
-                  <div v-if="slotProps.value !== null" class="flex items-center">
-                    <div class="w-3 h-3 rounded-full mr-2"
-                         :class="`priority-indicator priority-${slotProps.value}`"></div>
-                    <span>{{ priorityOptions.find(opt => opt.value === slotProps.value)?.label }}</span>
+                <template #value="">
+
+                  <div class="flex items-center">
+                    <template v-if="order.priority !== null">
+                      <div class="w-3 h-3 rounded-full mr-2"
+                           :class="`priority-indicator priority-${order.priority}`"></div>
+                      <span>{{ order.priority }}</span>
+                    </template>
+                    <template v-else>
+                      <span>Нет</span>
+                    </template>
                   </div>
-                  <span v-else>Нет</span>
                 </template>
               </Select>
             </td>
+
 
 
             <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors"

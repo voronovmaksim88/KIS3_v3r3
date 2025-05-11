@@ -35,13 +35,11 @@ export interface typePaginatedOrderResponse {
     data: typeOrderRead[];
 }
 
-// --- ВЫНЕСЕННЫЕ ТИПЫ ДЛЯ СОРТИРОВКИ ---
 // определяем возможные поля сортировки для заказов, как указано в описании API
 export type OrderSortField = 'serial' | 'priority' | 'status'; // Используем 'status' согласно описанию API
 
 // Определяем возможные направления сортировки
 export type OrderSortDirection = 'asc' | 'desc';
-// --- КОНЕЦ ВЫНЕСЕННЫХ ТИПОВ ---
 
 
 // тип для параметров запроса fetchOrders
@@ -58,6 +56,7 @@ export interface typeFetchOrdersParams {
     sortField?: OrderSortField;
     sortDirection?: OrderSortField;
     filter_status?: number | null; // фильтрация по статусу (дублирует statusId? Уточните API)
+    no_priority?: boolean;
 }
 
 // Типы для вложенных структур
