@@ -22,9 +22,10 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
     const searchCustomer = ref('');
     const searchName = ref('');
     const noPriority = ref(false);
+    const searchWorks = ref<number[]>([]); // Массив ID выбранных работ
+
 
     // Действия для управления состоянием таблицы
-
     function toggleShowEndedOrders() {
         showEndedOrders.value = !showEndedOrders.value;
     }
@@ -74,6 +75,12 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         searchCustomer.value = '';
         searchName.value = '';
         searchPriority.value = undefined; // сброс поиска по приоритету
+        searchWorks.value = []; // Сбрасываем поиск по работам
+    }
+
+    // действие для установки работ
+    function setSearchWorks(workIds: number[]) {
+        searchWorks.value = workIds;
     }
 
 
@@ -90,6 +97,7 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         searchCustomer,
         searchName,
         noPriority,
+        searchWorks,
 
 
         // Actions
@@ -100,6 +108,7 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
         setFilterStatus,
         resetTableState,
         setSearchPriority,
-        setNoPriority
+        setNoPriority,
+        setSearchWorks,
     };
 });

@@ -75,17 +75,27 @@ export const useOrdersStore = defineStore('orders', () => {
             sort_field: ordersTableStore.currentSortField,
             sort_direction: ordersTableStore.currentSortDirection,
             show_ended: ordersTableStore.showEndedOrders,
-            status_id: ordersTableStore.currentFilterStatus,
+            status_id: ordersTableStore.currentFilterStatus !== null ? ordersTableStore.currentFilterStatus : undefined,
             search_serial: ordersTableStore.searchSerial || undefined,
             search_customer: ordersTableStore.searchCustomer || undefined,
             search_name: ordersTableStore.searchName || undefined,
             no_priority: ordersTableStore.noPriority,
-            search_priority: ordersTableStore.searchPriority || undefined
+            search_priority: ordersTableStore.searchPriority || undefined,
+            search_works: ordersTableStore.searchWorks.length > 0 ? ordersTableStore.searchWorks.join(',') : undefined
         };
 
         try {
             const response = await axios.get<typePaginatedOrderResponse>(`${getApiUrl()}order/read`, {
                 params: queryParams,
+                paramsSerializer: (params) => {
+                    const result = [];
+                    for (const [key, value] of Object.entries(params)) {
+                        if (value !== undefined) {
+                            result.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+                        }
+                    }
+                    return result.join('&');
+                },
                 withCredentials: true
             });
 

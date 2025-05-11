@@ -116,21 +116,23 @@ async def get_order_serials(
 
 @router.get("/read", response_model=PaginatedOrderResponse)
 async def read_orders(
-    request: Request,
-    skip: int = Query(0, ge=0, description="Number of items to skip"),
-    limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
-    show_ended: bool = Query(True, description="Show completed orders (status 5, 6, 7)"),
-    status_id: Optional[int] = Query(None, description="Filter by status ID"),
-    search_serial: Optional[str] = Query(None, description="Search by order serial (case-insensitive, partial match)"),
-    search_customer: Optional[str] = Query(None, description="Search by customer name (case-insensitive, partial match)"),
-    search_priority: Optional[int] = Query(default=None, description="Search by exact priority value"),
-    search_name: Optional[str] = Query(None, description="Search by order name (case-insensitive, partial match)"),
-    sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
-    sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
-    filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
-    no_priority: bool = Query(False, description="Filter orders with no priority"),
-    search_works: Optional[str] = Query(None, description="Filter by work IDs (comma-separated, e.g., 1,2,3)"),
-    session: AsyncSession = Depends(get_async_db)
+        request: Request,
+        skip: int = Query(0, ge=0, description="Number of items to skip"),
+        limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
+        show_ended: bool = Query(True, description="Show completed orders (status 5, 6, 7)"),
+        status_id: Optional[int] = Query(None, description="Filter by status ID"),
+        search_serial: Optional[str] = Query(None,
+                                             description="Search by order serial (case-insensitive, partial match)"),
+        search_customer: Optional[str] = Query(None,
+                                               description="Search by customer name (case-insensitive, partial match)"),
+        search_priority: Optional[int] = Query(default=None, description="Search by exact priority value"),
+        search_name: Optional[str] = Query(None, description="Search by order name (case-insensitive, partial match)"),
+        sort_field: str = Query("serial", description="Field to sort by: 'serial', 'priority', or 'status'"),
+        sort_direction: str = Query("asc", description="Sort order: 'asc' or 'desc'"),
+        filter_status: Optional[int] = Query(None, description="Filter by specific status ID"),
+        no_priority: bool = Query(False, description="Filter orders with no priority"),
+        search_works: Optional[str] = Query(None, description="Filter by work IDs (comma-separated, e.g., 1,2,3)"),
+        session: AsyncSession = Depends(get_async_db)
 ):
     """
     Получить список заказов с пагинацией, фильтрацией и поиском.
@@ -153,9 +155,9 @@ async def read_orders(
         selectinload(Order.customer).selectinload(Counterparty.form),
         selectinload(Order.works)
     )
-    count_query = select(func.count(Order.serial))
+    count_query = select(func.count(func.distinct(Order.serial)))
 
-    # Применяем JOIN для фильтрации по работам, если указан search_works
+    # Применяем все фильтры в одном порядке для query и count_query
     if search_works:
         try:
             work_ids = [int(wid) for wid in search_works.split(',')]
@@ -168,8 +170,10 @@ async def read_orders(
             )
 
     if search_customer:
-        query = query.join(Order.customer.and_(Counterparty.id == Order.customer_id))
-        count_query = count_query.join(Order.customer.and_(Counterparty.id == Order.customer_id))
+        query = query.join(Counterparty, Counterparty.id == Order.customer_id)
+        count_query = count_query.join(Counterparty, Counterparty.id == Order.customer_id)
+        query = query.where(Counterparty.name.ilike(f"%{search_customer}%"))
+        count_query = count_query.where(Counterparty.name.ilike(f"%{search_customer}%"))
 
     if show_ended is False:
         completed_statuses = [5, 6, 7]
@@ -183,10 +187,6 @@ async def read_orders(
     if search_serial:
         query = query.where(Order.serial.ilike(f"%{search_serial}%"))
         count_query = count_query.where(Order.serial.ilike(f"%{search_serial}%"))
-
-    if search_customer:
-        query = query.where(Counterparty.name.ilike(f"%{search_customer}%"))
-        count_query = count_query.where(Counterparty.name.ilike(f"%{search_customer}%"))
 
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
@@ -203,9 +203,14 @@ async def read_orders(
         query = query.where(Order.status_id == filter_status)
         count_query = count_query.where(Order.status_id == filter_status)
 
+    # Выполняем count_query для получения total
     total_result = await session.execute(count_query)
     total = total_result.scalar_one_or_none() or 0
 
+    # Логирование для отладки
+    print(f"Total orders: {total}, Query filters: {request.query_params}")
+
+    # Применяем сортировку
     is_ascending_direction = sort_direction.lower() != "desc"
 
     def get_serial_sort_expressions(ascending_order=True):
@@ -245,10 +250,15 @@ async def read_orders(
     else:
         query = query.order_by(*get_serial_sort_expressions(ascending_order=is_ascending_direction))
 
+    # Применяем пагинацию
     query = query.offset(skip).limit(limit)
 
+    # Выполняем основной запрос
     result = await session.execute(query)
     orders_orm = result.scalars().unique().all()
+
+    # Логирование количества возвращённых записей
+    print(f"Returned orders: {len(orders_orm)}")
 
     orders_data_list = []
     for order_orm_item in orders_orm:
