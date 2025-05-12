@@ -657,7 +657,15 @@ watch(
 );
 
 
-
+// Сброс фильтров поиска при отключении строки поиска
+watch(
+    () => showSearchRow.value,
+    (newVal) => {
+      if (!newVal) {
+        handleResetTableAndData();
+      }
+    }
+);
 </script>
 
 
