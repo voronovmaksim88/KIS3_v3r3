@@ -10,7 +10,7 @@ from typing import List, Optional
 from database import get_async_db
 
 # Импортируем модели SQLAlchemy
-from models import Order, Counterparty, Person, OrderStatus, Work
+from models import Order, Counterparty, Person, OrderStatus, Work, order_work
 
 from schemas.order_schem import OrderSerial, OrderRead, PaginatedOrderResponse, OrderCommentSchema, OrderResponse, \
     OrderCreate, OrderUpdate
@@ -134,41 +134,33 @@ async def read_orders(
         search_works: Optional[str] = Query(None, description="Filter by work IDs (comma-separated, e.g., 1,2,3)"),
         session: AsyncSession = Depends(get_async_db)
 ):
-    """
-    Получить список заказов с пагинацией, фильтрацией и поиском.
-    Поле customer возвращает строку 'Форма Название'.
-
-    Параметр show_ended:
-    - Если True (по умолчанию), показывает все заказы
-    - Если False, исключает заказы со статусами 5, 6, 7 (завершенные)
-
-    Параметры сортировки:
-    - sort_field: поле для сортировки ('serial', 'priority' или 'status')
-    - sort_order: направление сортировки
-      - 'asc' - по возрастанию
-      - 'desc' - по убыванию
-
-    Параметр search_works:
-    - Фильтрует заказы, у которых есть хотя бы одна из указанных работ (ID работ передаются через запятую)
-    """
     query = select(Order).options(
         selectinload(Order.customer).selectinload(Counterparty.form),
         selectinload(Order.works)
     )
     count_query = select(func.count(func.distinct(Order.serial)))
 
-    # Применяем все фильтры в одном порядке для query и count_query
+    # Применяем фильтр по search_works через подзапрос
     if search_works:
         try:
             work_ids = [int(wid) for wid in search_works.split(',')]
-            query = query.join(Order.works).where(Work.id.in_(work_ids))
-            count_query = count_query.join(Order.works).where(Work.id.in_(work_ids))
+            # Подзапрос для выбора заказов, у которых есть хотя бы одна из указанных работ
+            subquery = (
+                select(Order.serial)
+                .join(order_work, order_work.c.order_serial == Order.serial)
+                .where(order_work.c.work_id.in_(work_ids))
+                .group_by(Order.serial)
+                .having(func.count(order_work.c.work_id) > 0)
+            )
+            query = query.where(Order.serial.in_(subquery))
+            count_query = count_query.where(Order.serial.in_(subquery))
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid format for search_works. Expected comma-separated integers (e.g., 1,2,3)"
             )
 
+    # Остальные фильтры
     if search_customer:
         query = query.join(Counterparty, Counterparty.id == Order.customer_id)
         count_query = count_query.join(Counterparty, Counterparty.id == Order.customer_id)
