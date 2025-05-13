@@ -27,12 +27,16 @@ const pageStore = usePagesStore();
           severity="info"
           label="Учёт шкафов"
           @click="pageStore.setPage('box-serial-num')"
+          raised
+          size="large"
       />
 
       <Button
           severity="info"
           label="Заказы"
           @click="pageStore.setPage('orders')"
+          raised
+          size="large"
       />
 
 
@@ -40,6 +44,8 @@ const pageStore = usePagesStore();
           severity="info"
           label="Задачи"
           @click="pageStore.setPage('tasks')"
+          raised
+          size="large"
       />
 
       <Button
@@ -47,24 +53,32 @@ const pageStore = usePagesStore();
           label="Тайминги"
           @click="pageStore.setPage('')"
           disabled="true"
+          raised
+          size="large"
       />
 
       <Button
           severity="info"
           label="Склад"
           @click="pageStore.setPage('warehouse')"
+          raised
+          size="large"
       />
 
       <Button
           severity="info"
           label="Тест FastAPI"
           @click="pageStore.setPage('test-fastapi')"
+          raised
+          size="large"
       />
 
       <Button
           severity="info"
           label="Тест базы данных"
           @click="pageStore.setPage('test-db')"
+          raised
+          size="large"
       />
 
     </div>
@@ -72,7 +86,3 @@ const pageStore = usePagesStore();
 
 
 </template>
-
-<style scoped>
-
-</style>
