@@ -632,7 +632,7 @@ async def edit_order(
     if order_data.name is not None:
         order.name = order_data.name
 
-    if order_data.priority is not None:
+    if "priority" in order_data.model_dump(exclude_unset=True):
         order.priority = order_data.priority
 
     if order_data.deadline_moment is not None:

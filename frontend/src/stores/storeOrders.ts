@@ -87,15 +87,6 @@ export const useOrdersStore = defineStore('orders', () => {
         try {
             const response = await axios.get<typePaginatedOrderResponse>(`${getApiUrl()}order/read`, {
                 params: queryParams,
-                paramsSerializer: (params) => {
-                    const result = [];
-                    for (const [key, value] of Object.entries(params)) {
-                        if (value !== undefined) {
-                            result.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-                        }
-                    }
-                    return result.join('&');
-                },
                 withCredentials: true
             });
 
