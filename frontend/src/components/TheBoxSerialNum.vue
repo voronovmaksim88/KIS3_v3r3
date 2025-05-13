@@ -167,7 +167,7 @@ const formatPersonName = (person: any) => {
 
   <!-- Фиктивный элемент для линтера -->
   <div
-      class=" fade-slide-enter-active  fade-slide-leave-active  fade-slide-enter-from  fade-slide-leave-to"
+      class=" fade-slide-enter-active fade-slide-leave-active fade-slide-enter-from fade-slide-leave-to"
       aria-hidden="true"
       style="display: none;"
   />
