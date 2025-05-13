@@ -149,6 +149,13 @@ class Person(Base):
         uselist=False
     )
 
+    # Добавляем отношение к задачам
+    tasks: Mapped[List["Task"]] = relationship(
+        back_populates="executor",
+        foreign_keys="[Task.executor_uuid]"
+    )
+
+
     def __repr__(self) -> str:
         return f"Person(id={self.uuid!r}, name={self.name!r}, surname={self.surname!r})"
 
@@ -371,7 +378,7 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     status_id: Mapped[int] = mapped_column(ForeignKey('task_statuses.id'), nullable=True)
     payment_status_id: Mapped[int] = mapped_column(ForeignKey('payment_statuses.id'), nullable=True) #  Пока не отслеживаем
-    executor_uuid: Mapped[int] = mapped_column(ForeignKey('people.uuid'), nullable=True)
+    executor_uuid: Mapped[Optional[UUID]] = mapped_column(ForeignKey('people.uuid'), nullable=True)
 
     # Запланированное время на выполнение задачи
     planned_duration: Mapped[Optional[timedelta]] = mapped_column(Interval, nullable=True)
@@ -408,6 +415,12 @@ class Task(Base):
 
     # Ссылка на корневую задачу
     root_task_id: Mapped[Optional[int]] = mapped_column(ForeignKey('tasks.id'), nullable=True)
+
+    # Связь с исполнителем
+    executor: Mapped[Optional["Person"]] = relationship(
+        back_populates="tasks",  # Предполагаем, что в Person добавим обратную связь
+        foreign_keys="[Task.executor_uuid]"
+    )
 
     # Связи с явным указанием foreign_keys
     parent_task: Mapped["Task"] = relationship(

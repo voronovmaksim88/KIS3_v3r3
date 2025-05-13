@@ -39,8 +39,7 @@ const pageStore = usePagesStore();
       <Button
           severity="info"
           label="Задачи"
-          @click="pageStore.setPage('')"
-          disabled="true"
+          @click="pageStore.setPage('tasks')"
       />
 
       <Button

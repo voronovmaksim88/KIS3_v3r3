@@ -22,6 +22,7 @@ from routers.people_router import router as people_router
 from routers.counterparty_router import router as counterparty_router
 from routers.work_router import router as work_router
 from routers.comments_router import router as comments_router
+from routers.task_router import router as task_router
 
 # Импортируем фабрику сессий из вашего модуля database
 from database import async_session_maker
@@ -115,6 +116,7 @@ app.include_router(order_router)
 app.include_router(people_router)
 app.include_router(counterparty_router)
 app.include_router(work_router)
+app.include_router(task_router)
 
 # Настройка CORS
 app.add_middleware(

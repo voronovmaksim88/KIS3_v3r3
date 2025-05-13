@@ -1,5 +1,10 @@
 <!--App.vue-->
 <script setup lang="ts">
+import {computed, onMounted, ref, watch} from 'vue';
+
+// импорт сторов
+import {usePagesStore} from "./stores/storePages.ts";
+import {useAuthStore} from "./stores/storeAuth.ts";
 
 import TheMain from "./components/TheMain.vue";
 import BoxSerialNum from "./components/TheBoxSerialNum.vue";
@@ -7,11 +12,10 @@ import BoxSerialNum from "./components/TheBoxSerialNum.vue";
 import TheTestFastAPI from "./components/Test_FastAPI/The_Test_FastAPI.vue";
 import TheTestDataBase from "./components/TestDataBase/TheTestDataBase.vue";
 import TheHeader from "@/components/TheHeader.vue";
-import {usePagesStore} from "./stores/storePages.ts";
-import {computed, onMounted, ref, watch} from 'vue';
-import {useAuthStore} from "./stores/storeAuth.ts";
 import TheLogin from "@/components/TheLogin.vue";
 import TheOrders from "@/components/TheOrders.vue";
+import TheWarehouse from "@/components/TheWarehouse.vue";
+import TheTasks from "@/components/TheTasks.vue";
 import { setupThemeWatcher } from './utils/themeManager';
 
 const apiUrl = ref<string>('');
@@ -91,6 +95,9 @@ const currentPageLabel = computed(() => {
     <TheTestFastAPI v-if="pageStore.selectedPage == 'test-fastapi'"/>
     <TheTestDataBase v-if="pageStore.selectedPage == 'test-db'"/>
     <TheOrders v-if="pageStore.selectedPage == 'orders'"/>
+    <TheWarehouse v-if="pageStore.selectedPage == 'warehouse'"/>
+    <TheTasks v-if="pageStore.selectedPage == 'tasks'"/>
+
     <!--  <CommercialOffer  v-if="" />-->
   </div>
 
