@@ -52,6 +52,12 @@ const pageStore = usePagesStore();
 
       <Button
           severity="info"
+          label="Склад"
+          @click="pageStore.setPage('warehouse')"
+      />
+
+      <Button
+          severity="info"
           label="Тест FastAPI"
           @click="pageStore.setPage('test-fastapi')"
       />
