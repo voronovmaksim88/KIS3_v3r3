@@ -1,95 +1,89 @@
 <script setup lang="ts">
-import {computed, onMounted} from 'vue';
-import {useBoxAccountingStore} from '../stores/storeBoxAccounting';
-import {useFormsVisibilityStore} from '../stores/storeVisibilityForms';
-import {storeToRefs} from 'pinia';
+import { computed, onMounted } from 'vue';
+import { useBoxAccountingStore } from '../stores/storeBoxAccounting';
+import { useFormsVisibilityStore } from '../stores/storeVisibilityForms';
+import { storeToRefs } from 'pinia';
 import TheFormAddRowInBoxAccounting from "@/components/TheFormAddRowInBoxAccounting.vue";
 import BaseButton from "@/components/Buttons/BaseButton.vue";
 import { useThemeStore } from "../stores/storeTheme";
 
-
-// Получаем текущую тему из хранилища
+// Stores
 const themeStore = useThemeStore();
-const currentTheme = computed(() => themeStore.theme);
-
-
 const boxAccountingStore = useBoxAccountingStore();
 const formsVisibilityStore = useFormsVisibilityStore();
 
-const {boxes, isLoading, error, pagination} = storeToRefs(boxAccountingStore);
+// Refs
+const { boxes, isLoading, error, pagination } = storeToRefs(boxAccountingStore);
+const currentTheme = computed(() => themeStore.theme);
 
-// Вычисляемое свойство для сортировки шкафов по убыванию серийных номеров
-const sortedBoxes = computed(() => {
-  return [...boxes.value].sort((a, b) => b.serial_num - a.serial_num);
-});
+// Computed
+const sortedBoxes = computed(() => [...boxes.value].sort((a, b) => b.serial_num - a.serial_num));
 
-// Загрузка данных при монтировании компонента
+const tableClasses = computed(() => ({
+  base: 'min-w-full rounded-lg mb-4 table-fixed shadow-md',
+  theme: currentTheme.value === 'dark' ? 'bg-gray-700' : 'bg-gray-100 border border-gray-200'
+}));
+
+const thClasses = computed(() => ({
+  base: 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider',
+  theme: currentTheme.value === 'dark'
+      ? 'border-gray-300 text-gray-300 bg-gray-600'
+      : 'border-gray-300 text-gray-600 bg-gray-100'
+}));
+
+const rowClasses = computed(() => ({
+  base: 'border-t transition-colors duration-200',
+  theme: currentTheme.value === 'dark'
+      ? 'text-gray-300 bg-gray-700 hover:bg-gray-600'
+      : 'text-gray-600 bg-gray-100 hover:bg-gray-200',
+  border: currentTheme.value === 'dark'
+      ? 'border-gray-600'
+      : 'border-gray-300'
+}));
+
+// Hooks
 onMounted(async () => {
   await boxAccountingStore.fetchBoxes();
   console.log('Boxes loaded:', boxes.value.length);
 });
 
-function addNewRow() {
-  formsVisibilityStore.isFormAddRowInBoxAccountingVisible = true
-}
+// Methods
+const addNewRow = () => {
+  formsVisibilityStore.isFormAddRowInBoxAccountingVisible = true;
+};
 
-// Классы для фона основной таблицы
-const tableBaseClass = computed(() => {
-  const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
-});
-
-// Классы для заголовков таблицы (<th>)
-const thClasses = computed(() => {
-  const base = 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider'; // Общие стили
-  if (currentTheme.value === 'dark') {
-    return `${base} border-1 border-gray-300 text-gray-300 bg-gray-600`; // Стили для темной темы
-  } else {
-    return `${base} border-1 border-gray-300 text-gray-600 bg-gray-100`; // Стили для светлой темы
-  }
-});
-
-// Классы для заголовков таблицы (<th>)
-const textClasses = computed(() => {
-  if (currentTheme.value === 'dark') {
-    return `$ text-gray-300 bg-gray-600`; // Стили для темной темы
-  } else {
-    return `text-gray-600 bg-gray-100`; // Стили для светлой темы
-  }
-});
+const formatPersonName = (person: any) => {
+  if (!person) return '---';
+  return `${person.surname} ${person.name[0]}.${person.patronymic[0]}.`;
+};
 </script>
 
 <template>
-  <div class="w-full min-h-screen flex flex-col items-center  p-4 text-white"
-       :class="[
-         currentTheme === 'dark'
-           ? 'bg-gray-700'
-           : 'bg-gray-200'
-       ]"
+  <div
+      class="w-full min-h-screen flex flex-col items-center p-4"
+      :class="currentTheme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800'"
   >
-
-    <!-- Показываем индикатор загрузки -->
+    <!-- Loading indicator -->
     <div v-if="isLoading" class="w-full flex justify-center my-4">
       <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
-    <!-- Показываем ошибку, если она есть -->
+    <!-- Error message -->
     <div v-if="error" class="w-full bg-red-500 text-white p-4 rounded mb-4">
       {{ error }}
     </div>
 
-    <!-- Показываем форму добавления если надо -->
-    <!-- Анимация появления и исчезновения формы -->
+    <!-- Add form with transition -->
     <transition name="fade-slide">
       <TheFormAddRowInBoxAccounting
           v-if="formsVisibilityStore.isFormAddRowInBoxAccountingVisible"
       />
     </transition>
 
-    <!-- Показываем данные -->
+    <!-- Data table -->
     <div v-if="!isLoading && boxes.length > 0" class="w-full">
       <div class="overflow-x-auto">
-        <table :class="tableBaseClass">
+        <table :class="[tableClasses.base, tableClasses.theme]">
           <colgroup>
             <col style="width: 6%">  <!-- С/Н -->
             <col style="width: 15%"> <!-- Название -->
@@ -100,65 +94,47 @@ const textClasses = computed(() => {
             <col style="width: 16%"> <!-- Тестировщик -->
           </colgroup>
           <thead>
-          <tr :class="thClasses">
-            <th colspan="7" class="px-2 py-2 text-center  ">
-              <div  class="px-1 py-1  flex justify-end items-center">
-              <BaseButton
-                  :action="addNewRow"
-                  :text="'Добавить'"
-                  :style="'Success'"
-              />
+          <tr :class="[thClasses.base, thClasses.theme]">
+            <th colspan="7" class="px-2 py-2 text-center">
+              <div class="px-1 py-1 flex justify-end items-center">
+                <BaseButton
+                    :action="addNewRow"
+                    :text="'Добавить'"
+                    :style="'Success'"
+                />
               </div>
             </th>
           </tr>
-          <tr :class="thClasses">
-            <th class="px-4 py-2 text-left">С/Н</th>
-            <th class="px-4 py-2 text-left">Название</th>
-            <th class="px-4 py-2 text-left">Заказ</th>
-            <th class="px-4 py-2 text-left">Разработчик схемы</th>
-            <th class="px-4 py-2 text-left">Сборщик</th>
-            <th class="px-4 py-2 text-left">Программист</th>
-            <th class="px-4 py-2 text-left">Тестировщик</th>
+          <tr :class="[thClasses.base, thClasses.theme]">
+            <th class="px-4 py-2">С/Н</th>
+            <th class="px-4 py-2">Название</th>
+            <th class="px-4 py-2">Заказ</th>
+            <th class="px-4 py-2">Разработчик схемы</th>
+            <th class="px-4 py-2">Сборщик</th>
+            <th class="px-4 py-2">Программист</th>
+            <th class="px-4 py-2">Тестировщик</th>
           </tr>
           </thead>
 
-          <tbody :class="textClasses">
-          <tr v-for="box in sortedBoxes" :key="box.serial_num" class="border-t border-gray-600">
+          <tbody>
+          <tr
+              v-for="box in sortedBoxes"
+              :key="box.serial_num"
+              :class="[rowClasses.base, rowClasses.theme, rowClasses.border]"
+          >
             <td class="px-4 py-2">{{ box.serial_num }}</td>
             <td class="px-4 py-2">{{ box.name }}</td>
             <td class="px-4 py-2">{{ box.order_id }}</td>
-            <td class="px-4 py-2">
-              {{
-                box.scheme_developer.surname + ' ' + box.scheme_developer.name[0] + '.'
-                + box.scheme_developer.patronymic[0] + '.'
-              }}
-            </td>
-            <td class="px-4 py-2">
-              {{
-                box.assembler.surname + ' ' + box.assembler.name[0] + '.'
-                + box.assembler.patronymic[0] + '.'
-              }}
-            </td>
-            <td class="px-4 py-2">
-              <template v-if="box.programmer">
-                {{ box.programmer.surname + ' ' + box.programmer.name[0] + '.' + box.programmer.patronymic[0] + '.' }}
-              </template>
-              <template v-else>
-                ---
-              </template>
-            </td>
-            <td class="px-4 py-2">
-              {{
-                box.tester.surname + ' ' + box.tester.name[0] + '.'
-                + box.tester.patronymic[0] + '.'
-              }}
-            </td>
+            <td class="px-4 py-2">{{ formatPersonName(box.scheme_developer) }}</td>
+            <td class="px-4 py-2">{{ formatPersonName(box.assembler) }}</td>
+            <td class="px-4 py-2">{{ formatPersonName(box.programmer) }}</td>
+            <td class="px-4 py-2">{{ formatPersonName(box.tester) }}</td>
           </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Пагинация -->
+      <!-- Pagination -->
       <div class="flex justify-between items-center mt-4">
         <span>
           Показано {{ boxes.length }} из {{ pagination.total }} записей
@@ -168,14 +144,14 @@ const textClasses = computed(() => {
           <button
               @click="boxAccountingStore.changePage(pagination.page - 1)"
               :disabled="pagination.page <= 1"
-              class="px-4 py-2 bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Prev
           </button>
           <button
               @click="boxAccountingStore.changePage(pagination.page + 1)"
               :disabled="pagination.page >= pagination.pages"
-              class="px-4 py-2 bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -183,21 +159,22 @@ const textClasses = computed(() => {
       </div>
     </div>
 
-    <!-- Сообщение, если данных нет -->
+    <!-- Empty state -->
     <div v-if="!isLoading && boxes.length === 0" class="w-full text-center p-8">
       No boxes found. Please add some boxes to get started.
     </div>
   </div>
 
-  <!-- Невидимый элемент, чтобы линтер не жаловался -->
-  <div v-if="false" class="fade-slide-enter-active fade-slide-leave-active fade-slide-enter-from fade-slide-leave-to">
-
-  </div>
+  <!-- Фиктивный элемент для линтера -->
+  <div
+      class=" fade-slide-enter-active  fade-slide-leave-active  fade-slide-enter-from  fade-slide-leave-to"
+      aria-hidden="true"
+      style="display: none;"
+  />
 </template>
 
 <style scoped>
-/* Анимация появления и исчезновения */
-/* stylelint-disable */
+/* Animations */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
   transition: all 0.5s ease-in-out;
@@ -208,25 +185,19 @@ const textClasses = computed(() => {
   opacity: 0;
   transform: translateY(-20px);
 }
-/* stylelint-enable */
 
-
-/* Стиль таблицы */
+/* Table styles */
 table {
   border-collapse: separate;
   border-spacing: 0;
 }
 
 th, td {
-  border-bottom: 1px solid #4b5563;
+  border-bottom: 1px solid;
+  @apply border-gray-400;
 }
 
 tr:last-child td {
   border-bottom: none;
 }
-
-tr:hover {
-  background-color: rgba(55, 65, 81, 0.7);
-}
-
 </style>
