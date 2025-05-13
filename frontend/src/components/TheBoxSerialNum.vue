@@ -5,7 +5,12 @@ import {useFormsVisibilityStore} from '../stores/storeVisibilityForms';
 import {storeToRefs} from 'pinia';
 import TheFormAddRowInBoxAccounting from "@/components/TheFormAddRowInBoxAccounting.vue";
 import BaseButton from "@/components/Buttons/BaseButton.vue";
+import { useThemeStore } from "../stores/storeTheme";
 
+
+// Получаем текущую тему из хранилища
+const themeStore = useThemeStore();
+const currentTheme = computed(() => themeStore.theme);
 
 
 const boxAccountingStore = useBoxAccountingStore();
@@ -28,10 +33,31 @@ function addNewRow() {
   formsVisibilityStore.isFormAddRowInBoxAccountingVisible = true
 }
 
+// Классы для фона основной таблицы
+const tableBaseClass = computed(() => {
+  const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
+  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
+});
+
+// Классы для заголовков таблицы (<th>)
+const thClasses = computed(() => {
+  const base = 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider'; // Общие стили
+  if (currentTheme.value === 'dark') {
+    return `${base} border-1 border-gray-300 text-gray-300 bg-gray-600`; // Стили для темной темы
+  } else {
+    return `${base} border-1 border-gray-300 text-gray-600 bg-gray-100`; // Стили для светлой темы
+  }
+});
 </script>
 
 <template>
-  <div class="w-full min-h-screen flex flex-col items-center bg-gray-800 p-4 text-white">
+  <div class="w-full min-h-screen flex flex-col items-center  p-4 text-white"
+       :class="[
+         currentTheme === 'dark'
+           ? 'bg-gray-700'
+           : 'bg-gray-200'
+       ]"
+  >
 
     <!-- Показываем индикатор загрузки -->
     <div v-if="isLoading" class="w-full flex justify-center my-4">
@@ -54,7 +80,7 @@ function addNewRow() {
     <!-- Показываем данные -->
     <div v-if="!isLoading && boxes.length > 0" class="w-full">
       <div class="overflow-x-auto">
-        <table class="min-w-full bg-gray-700 rounded-lg mb-4 table-fixed">
+        <table :class="tableBaseClass">
           <colgroup>
             <col style="width: 6%">  <!-- С/Н -->
             <col style="width: 15%"> <!-- Название -->
@@ -65,9 +91,9 @@ function addNewRow() {
             <col style="width: 16%"> <!-- Тестировщик -->
           </colgroup>
           <thead>
-          <tr>
-            <th colspan="7" class="px-2 py-2 text-center bg-gray-600 ">
-              <div  class="px-1 py-1 bg-gray-600 flex justify-end items-center">
+          <tr :class="thClasses">
+            <th colspan="7" class="px-2 py-2 text-center  ">
+              <div  class="px-1 py-1  flex justify-end items-center">
               <BaseButton
                   :action="addNewRow"
                   :text="'Добавить'"
@@ -76,7 +102,7 @@ function addNewRow() {
               </div>
             </th>
           </tr>
-          <tr>
+          <tr :class="thClasses">
             <th class="px-4 py-2 text-left">С/Н</th>
             <th class="px-4 py-2 text-left">Название</th>
             <th class="px-4 py-2 text-left">Заказ</th>
@@ -193,9 +219,4 @@ tr:hover {
   background-color: rgba(55, 65, 81, 0.7);
 }
 
-/* Стили для таблицы с фиксированной шириной */
-.table-fixed {
-  table-layout: fixed;
-  width: 100%;
-}
 </style>

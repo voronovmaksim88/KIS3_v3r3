@@ -18,7 +18,7 @@ const pageStore = usePagesStore();
   <div class="w-full min-h-screen flex flex-col items-center p-4"
        :class="[
          currentTheme === 'dark'
-           ? 'bg-gray-800'
+           ? 'bg-gray-700'
            : 'bg-gray-200'
        ]"
   >

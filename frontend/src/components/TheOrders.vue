@@ -745,7 +745,6 @@ watch(
         <!--строка управления на самом верху таблицы-->
         <tr
             :class="thClasses"
-
         >
           <th colspan="6" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
