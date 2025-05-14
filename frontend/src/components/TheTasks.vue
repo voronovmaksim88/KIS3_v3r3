@@ -1,7 +1,7 @@
 <!-- src/components/TheTasks.vue -->
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import {storeToRefs} from 'pinia';
 import { useTasksStore } from '../stores/storeTasks';
 import DataTable from 'primevue/datatable';
@@ -11,6 +11,16 @@ import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import { type TaskFilters } from '../stores/storeTasks';
 import {useThemeStore} from '../stores/storeTheme';
+import {useTableStyles} from '../composables/useTableStyles';
+
+// композитные компоненты
+const {
+  tableBaseClass,
+  thClasses,
+  tdBaseTextClass,
+  tableHeaderRowClass,
+  trBaseClass,
+} = useTableStyles();
 
 // Store темы
 const themeStore = useThemeStore();
@@ -60,38 +70,6 @@ watch(
 // Initial fetch
 tasksStore.fetchTasks();
 
-// Классы для фона основной таблицы
-const tableBaseClass = computed(() => {
-  const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
-});
-
-// Классы для заголовков таблицы (<th>)
-const thClasses = computed(() => {
-  const base = 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider'; // Общие стили
-  if (currentTheme.value === 'dark') {
-    return `${base} border-1 border-gray-300 text-gray-300 bg-gray-600`; // Стили для темной темы
-  } else {
-    return `${base} border-1 border-gray-300 text-gray-600 bg-gray-100`; // Стили для светлой темы
-  }
-});
-
-// Базовый цвет текста для обычных ячеек таблицы (<td>)
-const tdBaseTextClass = computed(() => {
-  return currentTheme.value === 'dark' ? 'text-gray-100' : 'text-gray-800';
-});
-
-// Классы для шапки таблицы (<th> colspan=6)
-const tableHeaderRowClass = computed(() => {
-  const base = 'px-2 py-2 text-center rounded-t-lg';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-600` : `${base} bg-gray-200`;
-});
-
-// Классы для строки таблицы (<tr>)
-const trBaseClass = computed(() => {
-  const base = 'transition-colors duration-100';
-  return currentTheme.value === 'dark' ? `${base} border-t border-gray-600` : `${base} border-t border-gray-200`;
-});
 </script>
 
 
@@ -250,8 +228,7 @@ const trBaseClass = computed(() => {
 
       <!--строка с заголовками таблицы-->
       <tr>
-        <th
-        >
+        <th :class="thClasses">
           <div class="flex items-center">
             id
           </div>
@@ -290,53 +267,47 @@ const trBaseClass = computed(() => {
 
       <!--строка с поисками и фильтрами-->
       <tr >
-
       </tr>
 
 
       </thead>
+
+
       <tbody>
       <template v-for="task in tasksStore.tasks" :key="task.id">
         <tr :class="trBaseClass">
 
-          <td
-
-          >
+          <td :class="tdBaseTextClass">
             {{ task.id }}
           </td>
 
 
-          <td class="px-4 py-2" :class="tdBaseTextClass">
+          <td :class="tdBaseTextClass">
           </td>
 
 
-          <!-- приоритет заказа -->
-
-          <td class="px-4 py-2" :class="tdBaseTextClass">
-
+          <td :class="tdBaseTextClass">
           </td>
 
 
 
-          <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors">
-
-          </td>
-
-
-          <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors">
+          <td :class="tdBaseTextClass">
 
           </td>
 
 
-          <td class="px-4 py-2" :class="tdBaseTextClass">
+          <td :class="tdBaseTextClass">
+
+          </td>
+
+
+          <td :class="tdBaseTextClass">
 
           </td>
         </tr>
 
 
-        <tr
-        >
-
+        <tr>
         </tr>
       </template>
 

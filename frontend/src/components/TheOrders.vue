@@ -4,8 +4,9 @@ import {onMounted, ref, computed} from 'vue';
 import {watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
-import {useOrdersTableStore} from '@/stores/storeOrdersTable'; // Импорт нового стора
+import {useOrdersTableStore} from '@/stores/storeOrdersTable';
 import {getStatusColor} from "@/utils/getStatusColor";
+import { useTableStyles } from '../composables/useTableStyles'; // для установки стилей
 
 // Импортируем типы
 import {OrderSortField} from '@/types/typeOrder'; //  для сортировки
@@ -33,6 +34,14 @@ import Button from "primevue/button";
 import {Checkbox} from "primevue";
 import MultiSelect from 'primevue/multiselect';
 
+// композитные компоненты
+const {
+  tableBaseClass,
+  thClasses,
+  tdBaseTextClass,
+  tableHeaderRowClass,
+  trBaseClass,
+} = useTableStyles();
 
 // всплывающие уведомления
 const toast = useToast();
@@ -256,22 +265,6 @@ const handleStatusFilterChange = () => {
   setSkip(0);
 }
 
-
-// Классы для заголовков таблицы (<th>)
-const thClasses = computed(() => {
-  const base = 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider'; // Общие стили
-  if (currentTheme.value === 'dark') {
-    return `${base} border-1 border-gray-300 text-gray-300 bg-gray-600`; // Стили для темной темы
-  } else {
-    return `${base} border-1 border-gray-300 text-gray-600 bg-gray-100`; // Стили для светлой темы
-  }
-});
-
-// Базовый цвет текста для обычных ячеек таблицы (<td>)
-const tdBaseTextClass = computed(() => {
-  return currentTheme.value === 'dark' ? 'text-gray-100' : 'text-gray-800';
-});
-
 // Классы для контейнера раскрытых деталей (<td> colspan="6")
 const detailsContainerClass = computed(() => {
   const base = 'p-4 transition-colors duration-300 ease-in-out';
@@ -323,23 +316,6 @@ const mainContainerClass = computed(() => {
   return currentTheme.value === 'dark' ? `${base} bg-gray-900 text-gray-100` : `${base} bg-gray-100 text-gray-900`;
 });
 
-// Классы для фона основной таблицы
-const tableBaseClass = computed(() => {
-  const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
-});
-
-// Классы для шапки таблицы (<th> colspan=6)
-const tableHeaderRowClass = computed(() => {
-  const base = 'px-2 py-2 text-center rounded-t-lg';
-  return currentTheme.value === 'dark' ? `${base} bg-gray-600` : `${base} bg-gray-200`;
-});
-
-// Классы для строки таблицы (<tr>)
-const trBaseClass = computed(() => {
-  const base = 'transition-colors duration-100';
-  return currentTheme.value === 'dark' ? `${base} border-t border-gray-600` : `${base} border-t border-gray-200`;
-});
 
 // Классы для hover эффекта ячейки с номером
 const tdNumberHoverClass = computed(() => {
