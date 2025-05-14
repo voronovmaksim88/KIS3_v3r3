@@ -7,7 +7,7 @@ import {useCounterpartyStore} from '@/stores/storeCounterparty'; // Импорт
 import {useToast} from 'primevue/usetoast';
 import BaseModal from '@/components/BaseModal.vue';
 import {useWorksStore} from "@/stores/storeWorks";
-import {getStatusColor} from "@/utils/getStatusColor";
+import {getOrderStatusColor} from "@/utils/getStatusColor.ts";
 
 // PrimeVue компоненты
 import Button from 'primevue/button';
@@ -392,11 +392,11 @@ const getCustomerNameById = (id: number): string => {
             >
               <template #option="slotProps">
                 <div class="flex items-center">
-                  <span :style="{ color: getStatusColor(slotProps.option.value) }">{{ slotProps.option.label }}</span>
+                  <span :style="{ color: getOrderStatusColor(slotProps.option.value) }">{{ slotProps.option.label }}</span>
                 </div>
               </template>
               <template #value="slotProps">
-                <span v-if="slotProps.value" :style="{ color: getStatusColor(slotProps.value) }">
+                <span v-if="slotProps.value" :style="{ color: getOrderStatusColor(slotProps.value) }">
                   {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Не выбрано' }}
                 </span>
                 <span v-else>{{ slotProps.placeholder }}</span>

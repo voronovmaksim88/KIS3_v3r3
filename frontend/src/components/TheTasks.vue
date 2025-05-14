@@ -12,6 +12,9 @@ import ProgressSpinner from 'primevue/progressspinner';
 import { type TaskFilters } from '../stores/storeTasks';
 import {useThemeStore} from '../stores/storeTheme';
 import {useTableStyles} from '../composables/useTableStyles';
+import Select from "primevue/select";
+import {getTaskStatusColor} from "@/utils/getStatusColor.ts";
+
 
 // композитные компоненты
 const {
@@ -70,8 +73,15 @@ watch(
 // Initial fetch
 tasksStore.fetchTasks();
 
+// Опции для статуса
+const statusOptions = [
+  {value: 1, label: 'Не начата'},
+  {value: 2, label: 'В работе'},
+  {value: 3, label: 'На паузе'},
+  {value: 4, label: 'Завершена'},
+  {value: 5, label: 'Отменена'},
+];
 </script>
-
 
 
 <template>
@@ -186,10 +196,10 @@ tasksStore.fetchTasks();
     <table :class="tableBaseClass">
       <colgroup>
         <col style="width: 5%">
-        <col style="width: 28%">
-        <col style="width: 7%">
-        <col style="width: 25%">
-        <col style="width: 15%">
+        <col style="width: 10%">
+        <col style="width: 20%">
+        <col style="width: 10%">
+        <col style="width: 30%">
         <col style="width: 20%">
       </colgroup>
       <thead>
@@ -204,16 +214,14 @@ tasksStore.fetchTasks();
 
             <div class="card flex flex-wrap justify-left gap-4 font-medium">
 
-              <!--чекбокс заказов все/активные-->
+              <!--чекбокс все/активные-->
               <div class="flex items-center gap-2">
                 <label class="class='text-middle'"> Завершённые </label>
-
               </div>
 
               <!--чекбокс поиска-->
               <div class="flex items-center gap-2">
                 <label > Поиск </label>
-
               </div>
 
             </div>
@@ -229,43 +237,32 @@ tasksStore.fetchTasks();
       <!--строка с заголовками таблицы-->
       <tr>
         <th :class="thClasses">
-          <div class="flex items-center">
             id
-          </div>
         </th>
 
         <th :class="thClasses">
-          Заказчик
-        </th>
-
-        <th :class="thClasses" class="cursor-pointer">
-          <div class="flex items-center">
-            Приоритет
-            <span class="ml-1">
-
-            </span>
-          </div>
+          Имя
         </th>
 
         <th :class="thClasses">
-          Название
+          Описание
         </th>
 
-        <th :class="thClasses">Виды работ</th>
-
-
-        <th :class="thClasses" class="cursor-pointer" >
-          <div class="flex items-center justify-between">
-              <span class="flex items-center">
-                Статус
-
-              </span>
-          </div>
+        <th :class="thClasses">
+          Статус
         </th>
+
+        <th :class="thClasses">
+          Статус оплаты
+        </th>
+
+
+        <th :class="thClasses">
+        </th>
+
       </tr>
 
 
-      <!--строка с поисками и фильтрами-->
       <tr >
       </tr>
 
@@ -283,16 +280,43 @@ tasksStore.fetchTasks();
 
 
           <td :class="tdBaseTextClass">
+            {{ task.name }}
+          </td>
+
+          <!--описание задачи-->
+          <td :class="tdBaseTextClass">
+            {{ task.description }}
           </td>
 
 
-          <td :class="tdBaseTextClass">
-          </td>
+
+          <!--статус заказа-->
+          <td class="px-4 py-2" :class="tdBaseTextClass">
+            <Select
+                v-model="task.status_id"
+                :options="statusOptions"
+                optionValue="value"
+                optionLabel="label"
+                placeholder="Выберите статус"
+                class="w-full"
+            >
+              <template #value="slotProps">
+                <span v-if="slotProps.value" :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }">
+                 {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
+                </span>
+                <span v-else>{{ slotProps.placeholder }}</span>
+              </template>
+
+              <template #option="slotProps">
+                <div class="flex items-center">
+                  <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                    {{ slotProps.option.label }}
+                  </span>
+                </div>
+              </template>
 
 
-
-          <td :class="tdBaseTextClass">
-
+            </Select>
           </td>
 
 

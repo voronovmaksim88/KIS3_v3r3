@@ -11,7 +11,7 @@ export interface typeTask {
     id: number;
     name: string;
     description: string | null;
-    status_id: number | null;
+    status_id: number;
     payment_status_id: number | null;
     executor_uuid: string | null; // UUID как строка
     planned_duration: string | null; // ISO duration (e.g., "PT2H")

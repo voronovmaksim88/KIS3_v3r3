@@ -5,7 +5,7 @@ import {watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {useOrdersStore} from '../stores/storeOrders';
 import {useOrdersTableStore} from '@/stores/storeOrdersTable';
-import {getStatusColor} from "@/utils/getStatusColor";
+import {getOrderStatusColor} from "@/utils/getStatusColor.ts";
 import { useTableStyles } from '../composables/useTableStyles'; // для установки стилей
 
 // Импортируем типы
@@ -967,8 +967,8 @@ watch(
                     <span
                         class="px-2 py-1 rounded border"
                         :style="{
-                          color: getStatusColor(slotProps.option.statusId, currentTheme),
-                          borderColor: getStatusColor(slotProps.option.statusId, currentTheme)
+                          color: getOrderStatusColor(slotProps.option.statusId, currentTheme),
+                          borderColor: getOrderStatusColor(slotProps.option.statusId, currentTheme)
                         }"
                     >
                       {{ slotProps.option.label }}
@@ -993,7 +993,7 @@ watch(
                     tdBaseTextClass,
                     { 'font-bold': [1, 2, 3, 4, 8].includes(order.status_id) }
                 ]"
-                :style="{ color: getStatusColor(order.status_id, currentTheme) }"
+                :style="{ color: getOrderStatusColor(order.status_id, currentTheme) }"
                 @click="toggleOrderDetails(order.serial)"
             >
               {{ order.serial }}
@@ -1041,7 +1041,6 @@ watch(
 
 
             <!-- приоритет заказа -->
-
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
                   v-model="order.priority"
@@ -1102,7 +1101,7 @@ watch(
               </div>
             </td>
 
-
+            <!--статус заказа-->
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <Select
                   v-model="order.status_id"
@@ -1114,7 +1113,7 @@ watch(
                   @change="handleStatusChange(order.serial, order.status_id)"
               >
                 <template #value="slotProps">
-                   <span v-if="slotProps.value" :style="{ color: getStatusColor(slotProps.value, currentTheme) }">
+                   <span v-if="slotProps.value" :style="{ color: getOrderStatusColor(slotProps.value, currentTheme) }">
                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                    </span>
                   <span v-else>{{ slotProps.placeholder }}</span>
@@ -1122,7 +1121,7 @@ watch(
 
                 <template #option="slotProps">
                   <div class="flex items-center">
-                      <span :style="{ color: getStatusColor(slotProps.option.value, currentTheme) }">
+                      <span :style="{ color: getOrderStatusColor(slotProps.option.value, currentTheme) }">
                         {{ slotProps.option.label }}
                       </span>
                   </div>
