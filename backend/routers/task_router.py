@@ -9,6 +9,7 @@ import logging
 from database import get_async_db
 from models import Task
 from schemas.task_schem import PaginatedTaskResponse
+from schemas.task_schem import TaskRead
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -90,11 +91,14 @@ async def read_tasks(
         if not tasks and total == 0:
             logger.warning("No tasks found matching the criteria")
 
+        # Преобразуем ORM-объекты Task в Pydantic-объекты TaskRead
+        tasks_data = [TaskRead.model_validate(task) for task in tasks]
+
         return PaginatedTaskResponse(
             total=total,
             limit=limit,
             skip=skip,
-            data=tasks
+            data=tasks_data
         )
 
     except HTTPException as he:

@@ -11,6 +11,7 @@ from uuid import UUID
 from database import get_async_db
 from models import Person
 from schemas.person_schem import PersonCanBe, PersonResponse
+from sqlalchemy.sql import and_
 
 router = APIRouter(
     prefix="/person",
@@ -96,7 +97,8 @@ async def get_person(
 
     Возвращает: объект Person
     """
-    query = select(Person).where(Person.uuid == uuid)
+
+    query = select(Person).where(and_(Person.uuid == uuid))
     result = await session.execute(query)
     person = result.scalar_one_or_none()
 
