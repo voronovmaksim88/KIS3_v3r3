@@ -120,7 +120,7 @@ app.include_router(task_router)
 
 # Настройка CORS
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore[misc]
     allow_origins=["https://sibplc-kis3.ru", "http://localhost:3000", "http://localhost:80", "http://localhost",
                    'http://localhost:8000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175',
                    'http://localhost:5176'],

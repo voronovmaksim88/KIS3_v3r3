@@ -23,6 +23,7 @@ from schemas.timing_schem import TimingSchema
 from datetime import datetime
 
 from fastapi import status
+from sqlalchemy.sql import and_
 
 router = APIRouter(
     prefix="/order",
@@ -147,7 +148,7 @@ async def read_orders(
             # Подзапрос для выбора заказов, у которых есть хотя бы одна из указанных работ
             subquery = (
                 select(Order.serial)
-                .join(order_work, order_work.c.order_serial == Order.serial)
+                .join(order_work, and_(order_work.c.order_serial == Order.serial))
                 .where(order_work.c.work_id.in_(work_ids))
                 .group_by(Order.serial)
                 .having(func.count(order_work.c.work_id) > 0)
@@ -183,7 +184,7 @@ async def read_orders(
     if search_priority is not None:
         query = query.where(Order.priority == search_priority)
         count_query = count_query.where(Order.priority == search_priority)
-    elif request.query_params.get("no_priority") == "true":
+    elif no_priority:
         query = query.where(Order.priority.is_(None))
         count_query = count_query.where(Order.priority.is_(None))
 
