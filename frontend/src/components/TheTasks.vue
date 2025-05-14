@@ -1,5 +1,101 @@
-// src/store/TheTasks.vue
 <!-- src/components/TheTasks.vue -->
+
+<script setup lang="ts">
+import { ref, watch, computed } from 'vue';
+import {storeToRefs} from 'pinia';
+import { useTasksStore } from '../stores/storeTasks';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import InputText from 'primevue/inputtext';
+import Button from 'primevue/button';
+import ProgressSpinner from 'primevue/progressspinner';
+import { type TaskFilters } from '../stores/storeTasks';
+import {useThemeStore} from '../stores/storeTheme';
+
+// Store темы
+const themeStore = useThemeStore();
+const {theme: currentTheme} = storeToRefs(themeStore);
+
+const statusIdInput = ref<string | null>(null);
+
+// Initialize store
+const tasksStore = useTasksStore();
+
+// Local filters for two-way binding
+const localFilters = ref<TaskFilters>({
+  status_id: null,
+  order_serial: null,
+  executor_uuid: null,
+});
+
+// Format date for display
+const formatDate = (isoDate: string | null): string => {
+  if (!isoDate) return '-';
+  return new Date(isoDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+// Handle pagination
+const onPage = (event: { first: number; rows: number }) => {
+  tasksStore.updatePagination(event.first, event.rows);
+};
+
+// Update filters with debouncing
+const updateFilters = () => {
+  tasksStore.updateFilters(localFilters.value);
+};
+
+// Watch for store filter changes to sync with local filters
+watch(
+    () => tasksStore.filters,
+    (newFilters) => {
+      localFilters.value = { ...newFilters };
+    },
+    { deep: true }
+);
+
+// Initial fetch
+tasksStore.fetchTasks();
+
+// Классы для фона основной таблицы
+const tableBaseClass = computed(() => {
+  const base = 'min-w-full rounded-lg mb-4 table-fixed shadow-md';
+  return currentTheme.value === 'dark' ? `${base} bg-gray-700` : `${base} bg-gray-100 border border-gray-200`;
+});
+
+// Классы для заголовков таблицы (<th>)
+const thClasses = computed(() => {
+  const base = 'px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider'; // Общие стили
+  if (currentTheme.value === 'dark') {
+    return `${base} border-1 border-gray-300 text-gray-300 bg-gray-600`; // Стили для темной темы
+  } else {
+    return `${base} border-1 border-gray-300 text-gray-600 bg-gray-100`; // Стили для светлой темы
+  }
+});
+
+// Базовый цвет текста для обычных ячеек таблицы (<td>)
+const tdBaseTextClass = computed(() => {
+  return currentTheme.value === 'dark' ? 'text-gray-100' : 'text-gray-800';
+});
+
+// Классы для шапки таблицы (<th> colspan=6)
+const tableHeaderRowClass = computed(() => {
+  const base = 'px-2 py-2 text-center rounded-t-lg';
+  return currentTheme.value === 'dark' ? `${base} bg-gray-600` : `${base} bg-gray-200`;
+});
+
+// Классы для строки таблицы (<tr>)
+const trBaseClass = computed(() => {
+  const base = 'transition-colors duration-100';
+  return currentTheme.value === 'dark' ? `${base} border-t border-gray-600` : `${base} border-t border-gray-200`;
+});
+</script>
+
+
+
 <template>
   <div class="container mx-auto p-4">
     <!-- Filters -->
@@ -43,7 +139,7 @@
     </div>
 
     <!-- Loading and Error States -->
-    <div v-if="tasksStore.loading" class="text-center py-4">
+    <div v-if="tasksStore.isLoading" class="text-center py-4">
       <ProgressSpinner style="width: 50px; height: 50px" />
     </div>
     <div v-else-if="tasksStore.error" class="text-red-500 text-center py-4">
@@ -97,62 +193,169 @@
       </Column>
     </DataTable>
   </div>
+
+
+
+
+
+
+
+
+
+
+<!--  <div v-if="(tasksStore.isLoading && !tasksStore.error) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" class="w-full">-->
+    <div class="w-full">
+    <table :class="tableBaseClass">
+      <colgroup>
+        <col style="width: 5%">
+        <col style="width: 28%">
+        <col style="width: 7%">
+        <col style="width: 25%">
+        <col style="width: 15%">
+        <col style="width: 20%">
+      </colgroup>
+      <thead>
+
+
+      <!--строка управления на самом верху таблицы-->
+      <tr
+          :class="thClasses"
+      >
+        <th colspan="6" :class="tableHeaderRowClass">
+          <div class="px-1 py-1 flex justify-between items-center">
+
+            <div class="card flex flex-wrap justify-left gap-4 font-medium">
+
+              <!--чекбокс заказов все/активные-->
+              <div class="flex items-center gap-2">
+                <label class="class='text-middle'"> Завершённые </label>
+
+              </div>
+
+              <!--чекбокс поиска-->
+              <div class="flex items-center gap-2">
+                <label > Поиск </label>
+
+              </div>
+
+            </div>
+
+
+            <span class="flex">
+            </span>
+          </div>
+        </th>
+      </tr>
+
+
+      <!--строка с заголовками таблицы-->
+      <tr>
+        <th
+        >
+          <div class="flex items-center">
+            id
+          </div>
+        </th>
+
+        <th :class="thClasses">
+          Заказчик
+        </th>
+
+        <th :class="thClasses" class="cursor-pointer">
+          <div class="flex items-center">
+            Приоритет
+            <span class="ml-1">
+
+            </span>
+          </div>
+        </th>
+
+        <th :class="thClasses">
+          Название
+        </th>
+
+        <th :class="thClasses">Виды работ</th>
+
+
+        <th :class="thClasses" class="cursor-pointer" >
+          <div class="flex items-center justify-between">
+              <span class="flex items-center">
+                Статус
+
+              </span>
+          </div>
+        </th>
+      </tr>
+
+
+      <!--строка с поисками и фильтрами-->
+      <tr >
+
+      </tr>
+
+
+      </thead>
+      <tbody>
+      <template v-for="task in tasksStore.tasks" :key="task.id">
+        <tr :class="trBaseClass">
+
+          <td
+
+          >
+            {{ task.id }}
+          </td>
+
+
+          <td class="px-4 py-2" :class="tdBaseTextClass">
+          </td>
+
+
+          <!-- приоритет заказа -->
+
+          <td class="px-4 py-2" :class="tdBaseTextClass">
+
+          </td>
+
+
+
+          <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors">
+
+          </td>
+
+
+          <td class="px-4 py-2 cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors">
+
+          </td>
+
+
+          <td class="px-4 py-2" :class="tdBaseTextClass">
+
+          </td>
+        </tr>
+
+
+        <tr
+        >
+
+        </tr>
+      </template>
+
+      <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
+        <td
+            colspan="6"
+            class="py-6 text-center text-lg text-gray-400 italic"
+            :class="currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'"
+        >
+          Заказов не найдено
+        </td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
 </template>
 
-<script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useTasksStore } from '../stores/storeTasks';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import InputText from 'primevue/inputtext';
-import Button from 'primevue/button';
-import ProgressSpinner from 'primevue/progressspinner';
-import { type TaskFilters } from '../stores/storeTasks';
-
-const statusIdInput = ref<string | null>(null);
-
-// Initialize store
-const tasksStore = useTasksStore();
-
-// Local filters for two-way binding
-const localFilters = ref<TaskFilters>({
-  status_id: null,
-  order_serial: null,
-  executor_uuid: null,
-});
-
-// Format date for display
-const formatDate = (isoDate: string | null): string => {
-  if (!isoDate) return '-';
-  return new Date(isoDate).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-};
-
-// Handle pagination
-const onPage = (event: { first: number; rows: number }) => {
-  tasksStore.updatePagination(event.first, event.rows);
-};
-
-// Update filters with debouncing
-const updateFilters = () => {
-  tasksStore.updateFilters(localFilters.value);
-};
-
-// Watch for store filter changes to sync with local filters
-watch(
-    () => tasksStore.filters,
-    (newFilters) => {
-      localFilters.value = { ...newFilters };
-    },
-    { deep: true }
-);
-
-// Initial fetch
-tasksStore.fetchTasks();
-</script>
 
 <style scoped>
 /* Additional TailwindCSS styling if needed */

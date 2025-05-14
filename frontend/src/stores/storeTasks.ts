@@ -57,12 +57,12 @@ export const useTasksStore = defineStore('tasks', () => {
         order_serial: null,
         executor_uuid: null,
     });
-    const loading: Ref<boolean> = ref(false);
+    const isLoading: Ref<boolean> = ref(false);
     const error: Ref<string | null> = ref(null);
 
     // Метод для получения задач
     async function fetchTasks(): Promise<void> {
-        loading.value = true;
+        isLoading.value = true;
         error.value = null;
 
         try {
@@ -101,7 +101,7 @@ export const useTasksStore = defineStore('tasks', () => {
             }
             console.error('Error fetching tasks:', err);
         } finally {
-            loading.value = false;
+            isLoading.value = false;
         }
     }
 
@@ -136,7 +136,7 @@ export const useTasksStore = defineStore('tasks', () => {
         skip,
         limit,
         filters,
-        loading,
+        isLoading,
         error,
         fetchTasks,
         updatePagination,
