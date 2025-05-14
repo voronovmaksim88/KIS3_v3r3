@@ -3,10 +3,8 @@
 Схемы для заказов
 """
 
-from pydantic import BaseModel, field_validator, computed_field
+from pydantic import BaseModel
 from typing import Optional
-from typing import List
-from datetime import datetime
 from pydantic import ConfigDict
 
 # --- WorkSchema (убедитесь, что она есть и настроена) ---
