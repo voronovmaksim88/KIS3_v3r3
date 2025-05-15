@@ -2,6 +2,7 @@
 
 export interface typeTask {
     id: number;
+    order_serial: string | null;
     name: string;
     description: string;
     status_id: number;
