@@ -4,7 +4,6 @@ import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTasksStore } from '../stores/storeTasks';
 import { useOrdersStore } from '../stores/storeOrders'; // Добавляем импорт storeOrders
-import ProgressSpinner from 'primevue/progressspinner';
 import { type TaskFilters } from '../stores/storeTasks';
 import { useThemeStore } from '../stores/storeTheme';
 import { useTableStyles } from '../composables/useTableStyles';
@@ -129,10 +128,12 @@ onBeforeUnmount(() => {
     <!-- Добавляем компонент Toast -->
     <Toast />
 
-    <!-- Loading and Error States -->
-    <div v-if="tasksStore.isLoading && tasksStore.tasks.length === 0" class="text-center py-4">
-      <ProgressSpinner style="width: 50px; height: 50px" fill="transparent" aria-label="Loading"/>
+    <!-- Индикатор загрузки -->
+    <div v-if="tasksStore.isLoading && tasksStore.tasks.length === 0" class="w-full flex justify-center my-4">
+      <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
     </div>
+
+
     <div v-else-if="tasksStore.error" class="text-red-500 text-center py-4">
       {{ tasksStore.error }}
     </div>
