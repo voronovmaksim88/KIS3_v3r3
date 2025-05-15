@@ -13,6 +13,7 @@ from uuid import UUID
 class TaskSchema(BaseModel):
     id: int
     name: str
+    order_serial: Optional[str] = None
     description: Optional[str] = None
     status_id: Optional[int] = None
     payment_status_id: Optional[int] = None

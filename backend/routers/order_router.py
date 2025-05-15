@@ -390,6 +390,7 @@ async def get_order_detail(
             # Создаем словарь с данными задачи, включая ФИО исполнителя
             task_dict = {
                 "id": task.id,
+                "order_serial": task.order_serial,
                 "name": task.name,
                 "description": task.description,
                 "status_id": task.status_id,
