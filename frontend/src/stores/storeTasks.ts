@@ -1,5 +1,3 @@
-// src/stores/storeTasks.ts
-
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios, { AxiosError } from 'axios';
@@ -36,6 +34,30 @@ interface PaginatedTaskResponse {
     limit: number;
     skip: number;
     data: typeTask[];
+}
+
+// Интерфейс для ответа обновления задачи
+interface TaskResponse {
+    id: number;
+    name: string;
+    description: string | null;
+    status_id: number;
+    payment_status_id: number | null;
+    executor_uuid: string | null;
+    planned_duration: string | null;
+    actual_duration: string | null;
+    creation_moment: string | null;
+    start_moment: string | null;
+    deadline_moment: string | null;
+    end_moment: string | null;
+    price: number | null;
+    order_serial: string | null;
+    parent_task_id: number | null;
+    root_task_id: number | null;
+    status: { id: number; name: string } | null;
+    payment_status: { id: number; name: string } | null;
+    executor: { uuid: string; name: string; surname: string } | null;
+    order: { serial: string; name: string } | null;
 }
 
 // Интерфейс для параметров фильтрации
@@ -105,19 +127,53 @@ export const useTasksStore = defineStore('tasks', () => {
         }
     }
 
+    // Метод для обновления статуса задачи
+    async function updateTaskStatus(taskId: number, statusId: number): Promise<void> {
+        isLoading.value = true;
+        error.value = null;
+
+        try {
+            const response = await axios.patch<TaskResponse>(
+                `${getApiUrl()}tasks/update_status/${taskId}`,
+                {},
+                { params: { status_id: statusId } }
+            );
+
+            // Обновляем задачу в локальном состоянии
+            const updatedTask = response.data;
+            const taskIndex = tasks.value.findIndex(task => task.id === taskId);
+            if (taskIndex !== -1) {
+                tasks.value[taskIndex] = updatedTask;
+                console.log(`Task ${taskId} status updated to ${statusId}`);
+            } else {
+                console.warn(`Task ${taskId} not found in local state`);
+                // Если задача не найдена в локальном состоянии, перезагружаем список
+                void fetchTasks();
+            }
+        } catch (err: unknown) {
+            if (err instanceof AxiosError) {
+                error.value = err.response?.data?.detail || 'Failed to update task status';
+            } else {
+                error.value = 'Unexpected error occurred';
+            }
+            console.error('Error updating task status:', err);
+        } finally {
+            isLoading.value = false;
+        }
+    }
 
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;
         limit.value = newLimit;
-        fetchTasks();
+        void fetchTasks();
     }
 
     // Метод для обновления фильтров
     function updateFilters(newFilters: Partial<TaskFilters>): void {
         filters.value = { ...filters.value, ...newFilters };
         skip.value = 0; // Сбрасываем пагинацию при изменении фильтров
-        fetchTasks();
+        void fetchTasks();
     }
 
     // Метод для сброса фильтров
@@ -128,7 +184,7 @@ export const useTasksStore = defineStore('tasks', () => {
             executor_uuid: null,
         };
         skip.value = 0;
-        fetchTasks();
+        void fetchTasks();
     }
 
     return {
@@ -140,6 +196,7 @@ export const useTasksStore = defineStore('tasks', () => {
         isLoading,
         error,
         fetchTasks,
+        updateTaskStatus,
         updatePagination,
         updateFilters,
         resetFilters,

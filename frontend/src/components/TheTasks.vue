@@ -81,6 +81,16 @@ const statusOptions = [
   {value: 4, label: 'Завершена'},
   {value: 5, label: 'Отменена'},
 ];
+
+// Функция для обновления статуса задачи
+const updateStatus = async (taskId: number, statusId: number) => {
+  await tasksStore.updateTaskStatus(taskId, statusId);
+  if (tasksStore.error) {
+    console.error('Error updating status:', tasksStore.error);
+  } else {
+    console.log(`Status for task ${taskId} updated successfully`);
+  }
+};
 </script>
 
 
@@ -293,29 +303,30 @@ const statusOptions = [
           <!--статус заказа-->
           <td class="px-4 py-2" :class="tdBaseTextClass">
             <Select
-                v-model="task.status_id"
+                :modelValue="task.status_id"
                 :options="statusOptions"
                 optionValue="value"
                 optionLabel="label"
                 placeholder="Выберите статус"
                 class="w-full"
+                @update:modelValue="updateStatus(task.id, $event)"
             >
               <template #value="slotProps">
-                <span v-if="slotProps.value" :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }">
-                 {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
-                </span>
+                    <span
+                        v-if="slotProps.value"
+                        :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
+                    >
+                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
+                    </span>
                 <span v-else>{{ slotProps.placeholder }}</span>
               </template>
-
               <template #option="slotProps">
                 <div class="flex items-center">
-                  <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
-                    {{ slotProps.option.label }}
-                  </span>
+                      <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                        {{ slotProps.option.label }}
+                      </span>
                 </div>
               </template>
-
-
             </Select>
           </td>
 
@@ -353,5 +364,4 @@ const statusOptions = [
 
 
 <style scoped>
-/* Additional TailwindCSS styling if needed */
 </style>
