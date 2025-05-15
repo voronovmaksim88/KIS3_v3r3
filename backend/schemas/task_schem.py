@@ -69,7 +69,7 @@ class TaskRead(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    status: Optional[TaskStatusSchema] = None
+    status_id: Optional[int] = None
     payment_status: Optional[TaskPaymentStatusSchema] = None
     executor: Optional[PersonSchema] = None
     planned_duration: Optional[timedelta] = None

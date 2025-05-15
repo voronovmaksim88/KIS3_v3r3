@@ -50,7 +50,6 @@ async def read_tasks(
 
         # Основной запрос с подгрузкой связанных моделей
         query = select(Task).options(
-            selectinload(Task.status),
             selectinload(Task.payment_status),
             selectinload(Task.order),
             selectinload(Task.executor)  # Теперь работает, так как отношение определено
@@ -137,7 +136,6 @@ async def update_task_status(
 
         # Ищем задачу по ID
         query = select(Task).where(Task.id == task_id).options(
-            selectinload(Task.status),
             selectinload(Task.payment_status),
             selectinload(Task.order),
             selectinload(Task.executor)
