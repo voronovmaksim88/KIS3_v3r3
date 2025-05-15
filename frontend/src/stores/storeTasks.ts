@@ -105,6 +105,7 @@ export const useTasksStore = defineStore('tasks', () => {
         }
     }
 
+
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;

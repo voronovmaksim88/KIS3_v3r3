@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
 from typing import Optional
 from uuid import UUID
@@ -108,4 +108,63 @@ async def read_tasks(
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при получении задач: {str(e)}"
+        )
+
+
+@router.patch("/update_status/{task_id}", response_model=TaskRead)
+async def update_task_status(
+        task_id: int,
+        status_id: int = Query(..., ge=1, le=5, description="New status ID for the task"),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить статус задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - status_id: Новый ID статуса задачи (1-5).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        # Логируем входные параметры
+        logger.info(f"Received request to update task {task_id} with new status_id={status_id}")
+
+        # Проверяем валидность status_id
+        if status_id not in [1, 2, 3, 4, 5]:
+            raise HTTPException(status_code=400, detail="Invalid status_id. Must be between 1 and 5.")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.status),
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Обновляем статус задачи
+        update_query = update(Task).where(Task.id == task_id).values(status_id=status_id)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} status updated to {status_id}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating task status: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при обновлении статуса задачи: {str(e)}"
         )
