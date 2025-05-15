@@ -74,7 +74,7 @@ const updateStatus = async (taskId: number, statusId: number) => {
   <div class="container mx-auto p-4">
 
     <!-- Loading and Error States -->
-    <div v-if="tasksStore.isLoading" class="text-center py-4">
+    <div v-if="(tasksStore.isLoading && tasksStore.tasks.length === 0) " class="text-center py-4">
       <ProgressSpinner style="width: 50px; height: 50px"/>
     </div>
     <div v-else-if="tasksStore.error" class="text-red-500 text-center py-4">
@@ -85,7 +85,7 @@ const updateStatus = async (taskId: number, statusId: number) => {
 
 
   <!--  <div v-if="(tasksStore.isLoading && !tasksStore.error) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" class="w-full">-->
-  <div class="w-full">
+  <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" class="w-full">
     <table :class="tableBaseClass">
       <colgroup>
         <col style="width: 3%">
