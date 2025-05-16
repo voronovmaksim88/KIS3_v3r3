@@ -4,9 +4,9 @@
 import { computed, ref } from 'vue';
 import { typeTask} from "@/types/typeTask.ts";
 import 'primeicons/primeicons.css';
-import {formatFIO} from "@/utils/formatFIO.ts";
 import TaskDetailView from './TaskDetailView.vue'; // Импортируем компонент с детальной информацией
 import { useThemeStore } from "@/stores/storeTheme.ts"; // Импортируем хранилище темы
+import { useTasksStore } from "@/stores/storeTasks";
 
 interface Props {
   task: typeTask;
@@ -14,6 +14,9 @@ interface Props {
   statusMap: Record<number, string>;
   paymentStatusMap: Record<number, string>; // Добавляем карту статусов оплаты
 }
+
+// Store для задач
+const tasksStore = useTasksStore();
 
 // Получаем текущую тему из хранилища
 const themeStore = useThemeStore();
@@ -32,20 +35,31 @@ const childTasks = computed(() => {
 const hasChildren = computed(() => childTasks.value.length > 0);
 
 // Переключение состояния развернутости только если есть дочерние задачи
-const toggleExpand = () => {
+const toggleExpand = (event: Event) => {
+  event.stopPropagation();
   if (hasChildren.value) {
     isExpanded.value = !isExpanded.value;
   }
 };
 
 // Открытие/закрытие детальной информации о задаче
-const toggleTaskDetails = () => {
-  showDetails.value = !showDetails.value;
+const toggleTaskDetails = async () => {
+  if (!showDetails.value) {
+    showDetails.value = true; // Сразу показываем модальное окно
+    try {
+      await tasksStore.fetchTaskById(props.task.id);
+    } catch (error) {
+      console.error('Ошибка при загрузке данных задачи:', error);
+    }
+  } else {
+    closeTaskDetails();
+  }
 };
 
 // Закрытие детальной информации о задаче
 const closeTaskDetails = () => {
   showDetails.value = false;
+  tasksStore.clearCurrentTask();
 };
 
 function getStatusBackgroundClass(statusId: number) {
@@ -112,6 +126,12 @@ const getTaskBorderClass = computed(() => {
       ? 'border-gray-200'
       : 'border-gray-400';
 });
+
+// Форматирование имени исполнителя
+// const formatExecutorName = (executor: { name: string; surname: string } | null): string => {
+//   if (!executor) return '';
+//   return `${executor.surname} ${executor.name}`;
+// };
 </script>
 
 
@@ -134,7 +154,7 @@ const getTaskBorderClass = computed(() => {
         <span v-if="hasChildren"
               class="mr-1 border rounded-md px-2 py-1 transition-all duration-300 expand-icon-wrapper"
               :class="getExpandIconClass"
-              @click.stop="toggleExpand"
+              @click="toggleExpand"
         >
           <i class="pi pi-chevron-right transform transition-transform duration-300 expand-icon"
              :class="{ 'rotate-90': isExpanded }"></i>
@@ -153,24 +173,25 @@ const getTaskBorderClass = computed(() => {
       <!-- Правая часть - исполнитель -->
       <div v-if="task.executor"
            class="text-xs transition-colors duration-200"
-           :class="getSecondaryTextColorClass">
-        {{ formatFIO(task.executor) }}
+           :class="getSecondaryTextColorClass"
+      >
+<!--        {{ formatExecutorName(task.executor) }}-->
+        {{ task.executor }}
       </div>
     </div>
 
     <!-- Модальное окно с детальной информацией о задаче -->
-    <transition name="fade">
-      <div v-if="showDetails" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click.self="closeTaskDetails">
-        <div class="max-w-4xl w-full">
-          <TaskDetailView
-              :task="task"
-              :statusMap="statusMap"
-              :paymentStatusMap="paymentStatusMap"
-              :onClose="closeTaskDetails"
-          />
+    <Teleport to="body">
+      <transition name="fade">
+        <div v-if="showDetails" 
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" 
+             @click.self="closeTaskDetails">
+          <div class="max-w-4xl w-full" @click.stop>
+            <TaskDetailView :onClose="closeTaskDetails" />
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
 
     <!-- Используем компонент transition для анимации раскрытия/сворачивания -->
     <transition name="expand">

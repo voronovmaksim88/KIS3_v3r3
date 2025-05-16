@@ -18,6 +18,7 @@ const props = defineProps<Props>();
 // Store для задач
 const tasksStore = useTasksStore();
 const currentTask = computed(() => tasksStore.currentTask);
+const isLoading = computed(() => tasksStore.isCurrentTaskLoading);
 
 // Store для заказов
 const ordersStore = useOrdersStore();
@@ -128,9 +129,14 @@ const formatExecutorName = (executor: { name: string; surname: string } | null):
   <BaseModal
       :name="currentTask?.name || 'Детали задачи'"
       :onClose="props.onClose"
-      v-if="currentTask"
   >
-    <div class="grid grid-cols-1 gap-4 mb-6">
+    <!-- Индикатор загрузки -->
+    <div v-if="isLoading" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+
+    <!-- Содержимое при загруженных данных -->
+    <div v-else-if="currentTask" class="grid grid-cols-1 gap-4 mb-6">
       <!-- Статус -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Статус:</div>
@@ -228,6 +234,11 @@ const formatExecutorName = (executor: { name: string; surname: string } | null):
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Сообщение об ошибке -->
+    <div v-else class="text-center py-8 text-red-500">
+      Не удалось загрузить данные задачи
     </div>
   </BaseModal>
 </template>

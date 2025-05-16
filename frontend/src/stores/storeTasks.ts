@@ -82,6 +82,7 @@ export const useTasksStore = defineStore('tasks', () => {
         executor_uuid: null,
     });
     const isLoading: Ref<boolean> = ref(false);
+    const isCurrentTaskLoading: Ref<boolean> = ref(false);
     const error: Ref<string | null> = ref(null);
 
     // Метод для получения задач
@@ -131,7 +132,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // Метод для получения информации об одной задаче
     async function fetchTaskById(taskId: number): Promise<void> {
-        isLoading.value = true;
+        isCurrentTaskLoading.value = true;
         error.value = null;
 
         try {
@@ -148,7 +149,7 @@ export const useTasksStore = defineStore('tasks', () => {
             }
             console.error('Error fetching task:', err);
         } finally {
-            isLoading.value = false;
+            isCurrentTaskLoading.value = false;
         }
     }
 
@@ -225,13 +226,14 @@ export const useTasksStore = defineStore('tasks', () => {
         limit,
         filters,
         isLoading,
+        isCurrentTaskLoading,
         error,
         fetchTasks,
         fetchTaskById,
-        clearCurrentTask,
         updateTaskStatus,
         updatePagination,
         updateFilters,
         resetFilters,
+        clearCurrentTask,
     };
 });
