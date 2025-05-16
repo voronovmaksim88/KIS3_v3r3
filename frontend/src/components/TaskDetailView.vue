@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import {computed, ref} from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
-import { useOrdersStore } from '@/stores/storeOrders'; // Добавляем импорт storeOrders
+import { useOrdersStore } from '@/stores/storeOrders';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
 import Select from 'primevue/select';
@@ -36,12 +36,13 @@ const statusOptions = [
   { value: 5, label: 'Отменена' },
 ];
 
-
 const isStatusUpdated = ref(false); // Флаг для отслеживания изменения статуса
+const isStatusLoading = ref(false); // Флаг для индикатора загрузки статуса
 
 // Функция для обновления статуса задачи и заказа
 const updateStatus = async (taskId: number, statusId: number) => {
   isSaving.value = true; // Блокируем кнопку
+  isStatusLoading.value = true; // Показываем индикатор загрузки
 
   try {
     await tasksStore.updateTaskStatus(taskId, statusId);
@@ -56,6 +57,7 @@ const updateStatus = async (taskId: number, statusId: number) => {
     console.error('Unexpected error during status update:', err);
   } finally {
     isSaving.value = false; // Разблокируем кнопку независимо от результата
+    isStatusLoading.value = false; // Скрываем индикатор загрузки
   }
 };
 
@@ -159,41 +161,51 @@ const closeForm = async () => {
 
     <!-- Содержимое при загруженных данных -->
     <div v-else-if="currentTask" class="grid grid-cols-1 gap-4 mb-6">
+
       <!-- Статус -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Статус:</div>
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
-            <Select
-                :modelValue="currentTask.status_id"
-                :options="statusOptions"
-                optionValue="value"
-                optionLabel="label"
-                placeholder="Выберите статус"
-                class="w-full"
-                @update:modelValue="updateStatus(currentTask.id, $event)"
-            >
-              <template #value="slotProps">
-                <span
-                    v-if="slotProps.value"
-                    :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
-                >
-                  {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
-                </span>
-                <span v-else>{{ slotProps.placeholder }}</span>
-              </template>
-              <template #option="slotProps">
-                <div class="flex items-center">
-                  <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
-                    {{ slotProps.option.label }}
+            <div class="relative">
+              <!-- Индикатор загрузки статуса -->
+              <div v-if="isStatusLoading" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+
+              <Select
+                  :modelValue="currentTask.status_id"
+                  :options="statusOptions"
+                  optionValue="value"
+                  optionLabel="label"
+                  placeholder="Выберите статус"
+                  class="w-full"
+                  :class="{ 'opacity-50': isStatusLoading }"
+                  :disabled="isStatusLoading"
+                  @update:modelValue="updateStatus(currentTask.id, $event)"
+              >
+                <template #value="slotProps">
+                  <span
+                      v-if="slotProps.value"
+                      :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
+                  >
+                    {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                   </span>
-                </div>
-              </template>
-            </Select>
-            <span v-if="isOverdue" class="ml-3 flex items-center text-red-400">
-              <i class="pi pi-exclamation-circle mr-1"></i>
-              <span>Просрочена</span>
-            </span>
+                  <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+                <template #option="slotProps">
+                  <div class="flex items-center">
+                    <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                      {{ slotProps.option.label }}
+                    </span>
+                  </div>
+                </template>
+              </Select>
+              <span v-if="isOverdue" class="ml-3 flex items-center text-red-400">
+                <i class="pi pi-exclamation-circle mr-1"></i>
+                <span>Просрочена</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -270,3 +282,10 @@ const closeForm = async () => {
     />
   </BaseModal>
 </template>
+
+
+<style scoped>
+.relative {
+  position: relative;
+}
+</style>
