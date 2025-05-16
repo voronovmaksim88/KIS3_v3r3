@@ -11,3 +11,9 @@ backend/migrations/__pycache__/
 backend/migrations/versions/__pycache__/
 backend/models/__pycache__/
 
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
