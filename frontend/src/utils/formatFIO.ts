@@ -1,4 +1,4 @@
-import { typeTask } from '../stores/storeTasks';
+import { typeTask } from '../types/typeTask.ts';
 
 type Executor = NonNullable<typeTask['executor']>;
 
