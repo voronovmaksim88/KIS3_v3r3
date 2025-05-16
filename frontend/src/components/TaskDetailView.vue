@@ -41,6 +41,8 @@ const isStatusUpdated = ref(false); // Флаг для отслеживания 
 
 // Функция для обновления статуса задачи и заказа
 const updateStatus = async (taskId: number, statusId: number) => {
+  isSaving.value = true; // Блокируем кнопку
+
   try {
     await tasksStore.updateTaskStatus(taskId, statusId);
 
@@ -48,15 +50,12 @@ const updateStatus = async (taskId: number, statusId: number) => {
       console.error('Error updating task status:', tasksStore.error);
     } else {
       console.log(`Status for task ${taskId} updated successfully`);
-      isStatusUpdated.value = true; // Устанавливаем флаг
-
-      const orderSerial = currentTask.value?.order?.serial;
-      if (orderSerial) {
-        console.log(`Order serial found: ${orderSerial}`);
-      }
+      isStatusUpdated.value = true;
     }
   } catch (err) {
     console.error('Unexpected error during status update:', err);
+  } finally {
+    isSaving.value = false; // Разблокируем кнопку независимо от результата
   }
 };
 
@@ -122,6 +121,8 @@ const formatExecutorName = (executor: { name: string; surname: string } | null):
   if (!executor) return 'Не назначен';
   return `${executor.surname} ${executor.name}`;
 };
+
+const isSaving = ref(false); // Флаг для блокировки кнопки
 
 const closeForm = async () => {
   const orderSerial = currentTask.value?.order?.serial;
@@ -262,6 +263,10 @@ const closeForm = async () => {
       Не удалось загрузить данные задачи
     </div>
 
-    <Button label="Закрыть" @click="closeForm" />
+    <Button
+        label="Закрыть"
+        @click="closeForm"
+        :disabled="isSaving"
+    />
   </BaseModal>
 </template>
