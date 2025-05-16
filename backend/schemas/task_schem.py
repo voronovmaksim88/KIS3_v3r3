@@ -6,31 +6,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
-from uuid import UUID
-
-
-# Схема для задачи
-class TaskSchema(BaseModel):
-    id: int
-    name: str
-    order_serial: Optional[str] = None
-    description: Optional[str] = None
-    status_id: Optional[int] = None
-    payment_status_id: Optional[int] = None
-    executor: str = None
-    planned_duration: Optional[timedelta] = None
-    actual_duration: Optional[timedelta] = None
-    creation_moment: Optional[datetime] = None
-    start_moment: Optional[datetime] = None
-    deadline_moment: Optional[datetime] = None
-    end_moment: Optional[datetime] = None
-    price: Optional[int] = None
-    parent_task_id: Optional[int] = None
-    root_task_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
+from schemas.person_schem import PersonSchema
 
 class TaskStatusSchema(BaseModel):
     id: int
@@ -55,15 +31,6 @@ class OrderSchema(BaseModel):
     class Config:
         from_attributes = True
 
-
-class PersonSchema(BaseModel):
-    uuid: UUID
-    name: str
-    surname: str
-    patronymic: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class TaskRead(BaseModel):

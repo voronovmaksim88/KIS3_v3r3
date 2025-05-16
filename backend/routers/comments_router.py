@@ -10,6 +10,7 @@ from models import User
 from database import get_async_db
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import joinedload
+from schemas.person_schem import PersonSchema
 
 router = APIRouter()
 

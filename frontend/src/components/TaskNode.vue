@@ -2,11 +2,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { typeTask} from "@/types/typeTask.ts";
+import { typeTask} from "src/stores/storeTasks.ts"
 import 'primeicons/primeicons.css';
 import TaskDetailView from './TaskDetailView.vue'; // Импортируем компонент с детальной информацией
 import { useThemeStore } from "@/stores/storeTheme.ts"; // Импортируем хранилище темы
 import { useTasksStore } from "@/stores/storeTasks";
+import { formatFIO } from "@/utils/formatFIO.ts";
 
 interface Props {
   task: typeTask;
@@ -175,8 +176,7 @@ const getTaskBorderClass = computed(() => {
            class="text-xs transition-colors duration-200"
            :class="getSecondaryTextColorClass"
       >
-<!--        {{ formatExecutorName(task.executor) }}-->
-        {{ task.executor }}
+        {{ formatFIO(task.executor) }}
       </div>
     </div>
 

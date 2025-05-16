@@ -1,12 +1,12 @@
-export function formatFIO(fullName: string): string {
-    const parts = fullName.split(' ');
+import { typeTask } from '../stores/storeTasks';
 
-    if (parts.length !== 3) {
-        return fullName; // Если формат неправильный, возвращаем оригинальную строку
+type Executor = NonNullable<typeTask['executor']>;
+
+export function formatFIO(executor: Executor | null): string {
+    if (!executor) {
+        return 'Не назначен';
     }
-
-    const surname = parts[0];
-    const initials = `${parts[1][0]}.${parts[2][0]}.`;
-
-    return `${surname} ${initials}`;
+    
+    const initial = executor.name[0].toUpperCase();
+    return `${executor.surname} ${initial}.`;
 }

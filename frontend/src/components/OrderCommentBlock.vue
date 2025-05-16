@@ -9,15 +9,19 @@ import {useOrdersStore} from '../stores/storeOrders';
 // Определение типа для комментария
 interface Comment {
   moment_of_creation: string;
-  person: string;
+  person: {
+    uuid: string;
+    name: string;
+    surname: string;
+  } | null;
   text: string;
 }
 
 // Входные свойства компонента
 const props = defineProps({
   order_serial: {
-    type: String as () => string, // Теперь явно указываем тип string
-    required: true // Делаем поле обязательным
+    type: String as () => string,
+    required: true
   },
   comments: {
     type: Array as () => Comment[],
@@ -181,7 +185,7 @@ async function handleSuccess() {
             {{ formatLocalDateTime(comment.moment_of_creation) || 'Дата не указана' }}
           </div>
           <div class="text-xs" :class="detailSubtleTextClass">
-            {{ formatFIO(comment.person) || 'Автор не указан' }}
+            {{ formatFIO(comment.person) }}
           </div>
         </div>
         <div class="mt-1" :class="tdBaseTextClass">{{ comment.text }}</div>

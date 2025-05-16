@@ -15,10 +15,11 @@ from models import Order, Counterparty, Person, OrderStatus, Work, order_work
 from schemas.order_schem import OrderSerial, OrderRead, PaginatedOrderResponse, OrderCommentSchema, OrderResponse, \
     OrderCreate, OrderUpdate
 from schemas.order_schem import OrderDetailResponse  # Импортируем новую схему
+from schemas.person_schem import PersonSchema
 
 # Импортируем другие необходимые схемы, если они используются в OrderDetailResponse
 from schemas.work_schem import WorkSchema
-from schemas.task_schem import TaskSchema
+from schemas.task_schem import TaskRead
 from schemas.timing_schem import TimingSchema
 from datetime import datetime
 
@@ -334,33 +335,60 @@ async def get_order_detail(
         else:
             customer_display_name = order.customer.name
 
-    # 2. Обработка комментариев для получения ФИО автора
+    # 2. Обработка комментариев для получения данных автора
     formatted_comments = []
-    if order.comments:
-        # Собираем уникальные UUID авторов комментариев
+    if order.comments: # order.comments это список объектов CommentModel
         author_uuids = {comment.person_uuid for comment in order.comments if comment.person_uuid}
 
-        authors_map = {}
+        authors_details_map = {} # Будет хранить {uuid: PersonSchema_object}
         if author_uuids:
-            # Загружаем данные авторов одним запросом
             person_query = select(Person).where(Person.uuid.in_(author_uuids))
             person_results = await session.execute(person_query)
-            # Создаем словарь {uuid: "Фамилия Имя Отчество"}
-            for person in person_results.scalars():
-                fio = f"{person.surname} {person.name}"
-                if person.patronymic:
-                    fio += f" {person.patronymic}"
-                authors_map[person.uuid] = fio
+            for person_model in person_results.scalars():
+                # Преобразуем модель SQLAlchemy Person в PersonSchema
+                authors_details_map[person_model.uuid] = PersonSchema.model_validate(person_model)
 
-        # Формируем список комментариев с ФИО автора
-        for comment in order.comments:
-            author_name = authors_map.get(comment.person_uuid, "Автор не найден")  # Имя по умолчанию
+        for comment_model in order.comments: # comment_model это экземпляр модели SQLAlchemy Comment
+            person_schema_obj = None
+            if comment_model.person_uuid:
+                person_schema_obj = authors_details_map.get(comment_model.person_uuid)
+
+            # Если автор не найден, но UUID есть, создаем заглушку,
+            # так как OrderCommentSchema.person ожидает PersonSchema, а не Optional[PersonSchema]
+            if not person_schema_obj and comment_model.person_uuid:
+                print(f"Warning: Author details for UUID {comment_model.person_uuid} not found. Using fallback for comment ID {comment_model.id}.")
+                # Создаем объект PersonSchema с неизвестными данными
+                # Убедитесь, что поля uuid, name, surname являются обязательными в PersonSchema
+                # или предоставьте значения по умолчанию в PersonSchema
+                # Для примера, если PersonSchema требует эти поля:
+                person_schema_obj = PersonSchema(
+                    uuid=comment_model.person_uuid, # или какое-то специальное UUID для неизвестного
+                    name="Автор",
+                    surname="Неизвестен"
+                    # ... другие обязательные поля PersonSchema со значениями по умолчанию
+                )
+            elif not person_schema_obj and not comment_model.person_uuid:
+                 # Если UUID автора в комментарии изначально отсутствует (None)
+                 # и OrderCommentSchema.person не Optional, это тоже проблема.
+                 # На данный момент, схема OrderCommentSchema.person: PersonSchema, так что она не опциональна.
+                 # Это значит, что в БД в таблице комментариев person_uuid не должен быть NULL,
+                 # или OrderCommentSchema.person должен быть Optional[PersonSchema]
+                 # Для данного случая, создадим заглушку
+                print(f"Warning: Author UUID is NULL for comment ID {comment_model.id}. Using fallback.")
+                person_schema_obj = PersonSchema(
+                    uuid="00000000-0000-0000-0000-000000000000", # Пример UUID
+                    name="Автор",
+                    surname="Не указан"
+                    # ... другие обязательные поля
+                )
+
+
             formatted_comments.append(
                 OrderCommentSchema(
-                    id=comment.id,
-                    moment_of_creation=comment.moment_of_creation,
-                    text=comment.text,
-                    person=author_name  # Подставляем ФИО
+                    id=comment_model.id,
+                    moment_of_creation=comment_model.moment_of_creation,
+                    text=comment_model.text,
+                    person=person_schema_obj # Передаем объект PersonSchema
                 )
             )
 
@@ -384,9 +412,6 @@ async def get_order_detail(
 
         # Формируем список задач с ФИО исполнителя
         for task in order.tasks:
-            executor_name = executors_map.get(task.executor_uuid,
-                                              "Исполнитель не назначен") if task.executor_uuid else "Исполнитель не назначен"
-
             # Создаем словарь с данными задачи, включая ФИО исполнителя
             task_dict = {
                 "id": task.id,
@@ -395,7 +420,7 @@ async def get_order_detail(
                 "description": task.description,
                 "status_id": task.status_id,
                 "payment_status_id": task.payment_status_id,
-                "executor": executor_name,  # Подставляем ФИО исполнителя
+                "executor": task.executor,  # Подставляем ФИО исполнителя
                 "planned_duration": task.planned_duration,
                 "actual_duration": task.actual_duration,
                 "creation_moment": task.creation_moment,
@@ -408,7 +433,7 @@ async def get_order_detail(
             }
 
             # Добавляем задачу в список
-            formatted_tasks.append(TaskSchema.model_validate(task_dict))
+            formatted_tasks.append(TaskRead.model_validate(task_dict))
 
     # 4. Подготовка остальных данных
     works_data = [WorkSchema.model_validate(w) for w in order.works]

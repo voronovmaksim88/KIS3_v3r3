@@ -5,6 +5,7 @@
 from pydantic import BaseModel, UUID4, EmailStr
 from typing import Optional
 from datetime import date
+from uuid import UUID
 
 
 class PersonBase(BaseModel):
@@ -47,4 +48,14 @@ class PersonCanBe(BaseModel):
         """
         Конфигурация модели
         """
+        from_attributes = True
+
+
+class PersonSchema(BaseModel):
+    uuid: UUID
+    name: str
+    surname: str
+    patronymic: Optional[str] = None
+
+    class Config:
         from_attributes = True

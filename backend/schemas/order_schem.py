@@ -8,10 +8,13 @@ from pydantic import Field
 from typing import Optional
 from typing import List
 from pydantic import ConfigDict
+
+from schemas.person_schem import PersonSchema
 from schemas.work_schem import WorkSchema
 from datetime import datetime
-from schemas.task_schem import TaskSchema
+from schemas.task_schem import TaskRead
 from schemas.timing_schem import TimingSchema
+
 
 
 class OrderStatusSchema(BaseModel):
@@ -114,7 +117,7 @@ class OrderCommentSchema(BaseModel):
     id: int
     moment_of_creation: Optional[datetime] = None
     text: str
-    person: str  # Заменено person_uuid на person (строка с ФИО)
+    person: PersonSchema
 
     class Config:
         from_attributes = True
@@ -124,7 +127,7 @@ class OrderCommentSchema(BaseModel):
 # Схема для детального ответа (ИЗМЕНЕННАЯ)
 class OrderDetailResponse(OrderRead):
     comments: List[OrderCommentSchema] = []  # Указываем тип явно
-    tasks: List[TaskSchema] = []  # Указываем тип явно
+    tasks: List[TaskRead] = []  # Указываем тип явно
     timings: List[TimingSchema] = []  # Указываем тип явно
 
 
