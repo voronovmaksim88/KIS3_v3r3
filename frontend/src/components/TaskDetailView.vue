@@ -138,6 +138,11 @@ const closeForm = async () => {
   // Сброс текущей задачи или скрытие модалки
   tasksStore.clearCurrentTask(); // или hide modal и т.д.
   isStatusUpdated.value = false; // Сбрасываем флаг
+
+  // Если onClose был передан как проп — вызываем его (для уведомления родителя)
+  if (props.onClose) {
+    props.onClose();
+  }
 };
 </script>
 
