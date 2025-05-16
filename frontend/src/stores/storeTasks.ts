@@ -20,7 +20,6 @@ export interface typeTask {
     deadline_moment: string | null;
     end_moment: string | null;
     price: number | null;
-    order_serial: string | null;
     parent_task_id: number | null;
     root_task_id: number | null;
     status: { id: number; name: string } | null;
@@ -37,29 +36,6 @@ interface PaginatedTaskResponse {
     data: typeTask[];
 }
 
-// Интерфейс для ответа обновления задачи
-interface TaskResponse {
-    id: number;
-    name: string;
-    description: string | null;
-    status_id: number;
-    payment_status_id: number | null;
-    executor_uuid: string | null;
-    planned_duration: string | null;
-    actual_duration: string | null;
-    creation_moment: string | null;
-    start_moment: string | null;
-    deadline_moment: string | null;
-    end_moment: string | null;
-    price: number | null;
-    order_serial: string | null;
-    parent_task_id: number | null;
-    root_task_id: number | null;
-    status: { id: number; name: string } | null;
-    payment_status: { id: number; name: string } | null;
-    executor: { uuid: string; name: string; surname: string } | null;
-    order: { serial: string; name: string } | null;
-}
 
 // Интерфейс для параметров фильтрации
 export interface TaskFilters {
@@ -136,7 +112,7 @@ export const useTasksStore = defineStore('tasks', () => {
         error.value = null;
 
         try {
-            const response = await axios.get<TaskResponse>(
+            const response = await axios.get<typeTask>(
                 `${getApiUrl()}tasks/read/${taskId}`
             );
             currentTask.value = response.data;
@@ -159,30 +135,32 @@ export const useTasksStore = defineStore('tasks', () => {
         error.value = null;
 
         try {
-            const response = await axios.patch<TaskResponse>(
+            const response = await axios.patch<typeTask>(
                 `${getApiUrl()}tasks/update_status/${taskId}`,
                 {},
                 { params: { status_id: statusId } }
             );
 
-            // Обновляем задачу в локальном состоянии
             const updatedTask = response.data;
+            
             const taskIndex = tasks.value.findIndex(task => task.id === taskId);
             if (taskIndex !== -1) {
                 tasks.value[taskIndex] = updatedTask;
-                console.log(`Task ${taskId} status updated to ${statusId}`);
-            } else {
-                console.warn(`Task ${taskId} not found in local state`);
-                // Если задача не найдена в локальном состоянии, перезагружаем список
-                void fetchTasks();
             }
+
+            if (currentTask.value && currentTask.value.id === taskId) {
+                currentTask.value = updatedTask;
+            }
+
+            console.log(`Task ${taskId} status updated to ${statusId} successfully in store.`);
+
         } catch (err: unknown) {
             if (err instanceof AxiosError) {
                 error.value = err.response?.data?.detail || 'Failed to update task status';
             } else {
-                error.value = 'Unexpected error occurred';
+                error.value = 'Unexpected error occurred while updating task status';
             }
-            console.error('Error updating task status:', err);
+            console.error('Error updating task status in store:', err);
         } finally {
             isLoading.value = false;
         }

@@ -1145,8 +1145,8 @@ watch(
                      :class="currentTheme === 'dark' ? 'bg-gray-800' : 'bg-white'">
                   <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mr-2"></div>
                   <span :class="currentTheme === 'dark' ? 'text-white' : 'text-gray-800'">
-          Загрузка данных заказа...
-        </span>
+                    Загрузка данных заказа...
+                  </span>
                 </div>
               </div>
 

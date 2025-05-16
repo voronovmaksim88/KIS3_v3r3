@@ -45,19 +45,23 @@ const updateStatus = async (taskId: number, statusId: number) => {
     } else {
       console.log(`Status for task ${taskId} updated successfully`);
 
-      // Проверяем, есть ли связанный заказ
-      if (currentTask.value?.order_serial) {
+      // Проверяем, есть ли связанный заказ и получаем его серийный номер ПРАВИЛЬНО
+      const orderSerial = currentTask.value?.order?.serial;
+      if (orderSerial) {
+        console.log(`Attempting to refresh order: ${orderSerial}`);
         // Обновляем данные заказа
-        await ordersStore.fetchOrderDetail(currentTask.value.order_serial);
+        await ordersStore.fetchOrderDetail(orderSerial);
         if (ordersStore.error) {
-          console.error('Error updating order:', ordersStore.error);
+          console.error('Error refreshing order details:', ordersStore.error);
         } else {
-          console.log(`Order ${currentTask.value.order_serial} details updated successfully`);
+          console.log(`Order ${orderSerial} details refreshed successfully`);
         }
+      } else {
+        console.log('No order serial found in current task to refresh order details.');
       }
     }
   } catch (err) {
-    console.error('Unexpected error during status update:', err);
+    console.error('Unexpected error during status or order update process:', err);
   }
 };
 
