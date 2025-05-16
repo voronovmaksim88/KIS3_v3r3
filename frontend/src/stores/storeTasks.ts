@@ -1,3 +1,4 @@
+// storeTasks.ts
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios, { AxiosError } from 'axios';
@@ -71,6 +72,7 @@ export interface TaskFilters {
 export const useTasksStore = defineStore('tasks', () => {
     // Состояние
     const tasks: Ref<typeTask[]> = ref([]);
+    const currentTask: Ref<typeTask | null> = ref(null);
     const total: Ref<number> = ref(0);
     const skip: Ref<number> = ref(0);
     const limit: Ref<number> = ref(10);
@@ -122,6 +124,29 @@ export const useTasksStore = defineStore('tasks', () => {
                 error.value = 'Unexpected error occurred';
             }
             console.error('Error fetching tasks:', err);
+        } finally {
+            isLoading.value = false;
+        }
+    }
+
+    // Метод для получения информации об одной задаче
+    async function fetchTaskById(taskId: number): Promise<void> {
+        isLoading.value = true;
+        error.value = null;
+
+        try {
+            const response = await axios.get<TaskResponse>(
+                `${getApiUrl()}tasks/read/${taskId}`
+            );
+            currentTask.value = response.data;
+            console.log(`Fetched task ${taskId}`);
+        } catch (err: unknown) {
+            if (err instanceof AxiosError) {
+                error.value = err.response?.data?.detail || 'Failed to fetch task';
+            } else {
+                error.value = 'Unexpected error occurred';
+            }
+            console.error('Error fetching task:', err);
         } finally {
             isLoading.value = false;
         }
@@ -187,8 +212,14 @@ export const useTasksStore = defineStore('tasks', () => {
         void fetchTasks();
     }
 
+    // Метод для очистки данных текущей задачи
+    function clearCurrentTask(): void {
+        currentTask.value = null;
+    }
+
     return {
         tasks,
+        currentTask,
         total,
         skip,
         limit,
@@ -196,6 +227,8 @@ export const useTasksStore = defineStore('tasks', () => {
         isLoading,
         error,
         fetchTasks,
+        fetchTaskById,
+        clearCurrentTask,
         updateTaskStatus,
         updatePagination,
         updateFilters,
