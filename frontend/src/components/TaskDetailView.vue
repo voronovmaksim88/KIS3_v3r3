@@ -187,7 +187,7 @@ const closeForm = async () => {
                 <template #value="slotProps">
                   <span
                       v-if="slotProps.value"
-                      :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
+                      :style="{ color: getTaskStatusColor(slotProps.value) }"
                   >
                     {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                   </span>
@@ -195,7 +195,7 @@ const closeForm = async () => {
                 </template>
                 <template #option="slotProps">
                   <div class="flex items-center">
-                    <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                    <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
                       {{ slotProps.option.label }}
                     </span>
                   </div>
