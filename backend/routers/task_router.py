@@ -166,3 +166,49 @@ async def update_task_status(
             status_code=500,
             detail=f"Ошибка при обновлении статуса задачи: {str(e)}"
         )
+
+
+@router.get("/read/{task_id}", response_model=TaskRead)
+async def read_current_task(
+    task_id: int,
+    session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Получить детальную информацию об одной задаче по её ID.
+
+    Параметры:
+    - task_id: ID задачи
+
+    Возвращает:
+    - TaskRead: Полная информация о задаче, включая связанные данные
+    """
+    try:
+        # Логируем входные параметры
+        logger.info(f"Received request to get task with id={task_id}")
+
+        # Формируем запрос с подгрузкой связанных моделей
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+
+        # Выполняем запрос
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        logger.info(f"Successfully retrieved task {task_id}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error retrieving task: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при получении задачи: {str(e)}"
+        )
