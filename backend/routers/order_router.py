@@ -395,8 +395,11 @@ async def get_order_detail(
     # 3. Обработка задач для получения ФИО исполнителя
     formatted_tasks = []
     if order.tasks:
+        # Сортируем задачи по id перед обработкой
+        sorted_tasks = sorted(order.tasks, key=lambda task: task.id)
+
         # Собираем уникальные UUID исполнителей задач
-        executor_uuids = {task.executor_uuid for task in order.tasks if task.executor_uuid}
+        executor_uuids = {task.executor_uuid for task in sorted_tasks if task.executor_uuid}
 
         executors_map = {}
         if executor_uuids:
@@ -411,7 +414,7 @@ async def get_order_detail(
                 executors_map[person.uuid] = fio
 
         # Формируем список задач с ФИО исполнителя
-        for task in order.tasks:
+        for task in sorted_tasks:  # Используем отсортированный список
             # Создаем словарь с данными задачи, включая ФИО исполнителя
             task_dict = {
                 "id": task.id,
