@@ -1,9 +1,8 @@
-<!-- TaskDetailView.vue --><script setup lang="ts">
+<!-- TaskDetailView.vue -->
+<script setup lang="ts">
 import { computed } from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
 import { useOrdersStore } from '@/stores/storeOrders'; // Добавляем импорт storeOrders
-import { typeTask } from '@/types/typeTask.ts';
-import { formatFIO } from '@/utils/formatFIO.ts';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
 import Select from 'primevue/select';
@@ -11,9 +10,6 @@ import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
 
 interface Props {
-  task: typeTask;
-  statusMap: Record<number, string>;
-  paymentStatusMap: Record<number, string>;
   onClose?: () => void;
 }
 
@@ -21,6 +17,7 @@ const props = defineProps<Props>();
 
 // Store для задач
 const tasksStore = useTasksStore();
+const currentTask = computed(() => tasksStore.currentTask);
 
 // Store для заказов
 const ordersStore = useOrdersStore();
@@ -48,13 +45,13 @@ const updateStatus = async (taskId: number, statusId: number) => {
       console.log(`Status for task ${taskId} updated successfully`);
 
       // Проверяем, есть ли связанный заказ
-      if (props.task.order_serial) {
+      if (currentTask.value?.order_serial) {
         // Обновляем данные заказа
-        await ordersStore.fetchOrderDetail(props.task.order_serial);
+        await ordersStore.fetchOrderDetail(currentTask.value.order_serial);
         if (ordersStore.error) {
           console.error('Error updating order:', ordersStore.error);
         } else {
-          console.log(`Order ${props.task.order_serial} details updated successfully`);
+          console.log(`Order ${currentTask.value.order_serial} details updated successfully`);
         }
       }
     }
@@ -108,9 +105,9 @@ const formatDuration = (durationString: string | null): string => {
 
 // Определяем, просрочена ли задача
 const isOverdue = computed(() => {
-  if (!props.task.deadline_moment) return false;
-  if (props.task.status_id === 4) return false;
-  const deadline = new Date(props.task.deadline_moment);
+  if (!currentTask.value?.deadline_moment) return false;
+  if (currentTask.value?.status_id === 4) return false;
+  const deadline = new Date(currentTask.value.deadline_moment);
   const now = new Date();
   return deadline < now;
 });
@@ -119,10 +116,20 @@ const isOverdue = computed(() => {
 const bgContentClass = computed(() => currentTheme.value === 'dark' ? 'bg-gray-700' : 'bg-gray-50');
 const textSecondaryClass = computed(() => currentTheme.value === 'dark' ? 'text-gray-300' : 'text-gray-600');
 const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-700' : 'border-gray-200');
+
+// Функция для форматирования ФИО исполнителя
+const formatExecutorName = (executor: { name: string; surname: string } | null): string => {
+  if (!executor) return 'Не назначен';
+  return `${executor.surname} ${executor.name}`;
+};
 </script>
 
 <template>
-  <BaseModal :name="task.name" :onClose="onClose">
+  <BaseModal
+      :name="currentTask?.name || 'Детали задачи'"
+      :onClose="props.onClose"
+      v-if="currentTask"
+  >
     <div class="grid grid-cols-1 gap-4 mb-6">
       <!-- Статус -->
       <div class="grid grid-cols-4 gap-4">
@@ -130,13 +137,13 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
             <Select
-                :modelValue="task.status_id"
+                :modelValue="currentTask.status_id"
                 :options="statusOptions"
                 optionValue="value"
                 optionLabel="label"
                 placeholder="Выберите статус"
                 class="w-full"
-                @update:modelValue="updateStatus(task.id, $event)"
+                @update:modelValue="updateStatus(currentTask.id, $event)"
             >
               <template #value="slotProps">
                 <span
@@ -168,7 +175,7 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Описание:</div>
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
-            <p v-if="task.description">{{ task.description }}</p>
+            <p v-if="currentTask.description">{{ currentTask.description }}</p>
             <p v-else :class="currentTheme === 'dark' ? 'text-gray-400 italic' : 'text-gray-500 italic'">Описание отсутствует</p>
           </div>
         </div>
@@ -179,7 +186,7 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Исполнитель:</div>
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
-            <p v-if="task.executor">{{ formatFIO(task.executor) }}</p>
+            <p v-if="currentTask.executor">{{ formatExecutorName(currentTask.executor) }}</p>
             <p v-else :class="currentTheme === 'dark' ? 'text-gray-400 italic' : 'text-gray-500 italic'">Не назначен</p>
           </div>
         </div>
@@ -193,29 +200,29 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
             <div class="grid grid-cols-1 gap-2">
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Создана:</div>
-                <div>{{ formatDateTime(task.creation_moment) }}</div>
+                <div>{{ formatDateTime(currentTask.creation_moment) }}</div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Начата:</div>
-                <div>{{ formatDateTime(task.start_moment) }}</div>
+                <div>{{ formatDateTime(currentTask.start_moment) }}</div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Дедлайн:</div>
                 <div :class="{ 'text-red-400': isOverdue }">
-                  {{ formatDateTime(task.deadline_moment) }}
+                  {{ formatDateTime(currentTask.deadline_moment) }}
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Завершена:</div>
-                <div>{{ formatDateTime(task.end_moment) }}</div>
+                <div>{{ formatDateTime(currentTask.end_moment) }}</div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">План. длительность:</div>
-                <div>{{ formatDuration(task.planned_duration) }}</div>
+                <div>{{ formatDuration(currentTask.planned_duration) }}</div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Факт. длительность:</div>
-                <div>{{ formatDuration(task.actual_duration) }}</div>
+                <div>{{ formatDuration(currentTask.actual_duration) }}</div>
               </div>
             </div>
           </div>
