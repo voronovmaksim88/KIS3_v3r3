@@ -1,6 +1,6 @@
 <!-- TaskDetailView.vue -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import {computed, ref} from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
 import { useOrdersStore } from '@/stores/storeOrders'; // Добавляем импорт storeOrders
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
@@ -36,32 +36,27 @@ const statusOptions = [
   { value: 5, label: 'Отменена' },
 ];
 
+
+const isStatusUpdated = ref(false); // Флаг для отслеживания изменения статуса
+
 // Функция для обновления статуса задачи и заказа
 const updateStatus = async (taskId: number, statusId: number) => {
   try {
     await tasksStore.updateTaskStatus(taskId, statusId);
+
     if (tasksStore.error) {
       console.error('Error updating task status:', tasksStore.error);
     } else {
       console.log(`Status for task ${taskId} updated successfully`);
+      isStatusUpdated.value = true; // Устанавливаем флаг
 
-      // Проверяем, есть ли связанный заказ и получаем его серийный номер ПРАВИЛЬНО
       const orderSerial = currentTask.value?.order?.serial;
       if (orderSerial) {
-        console.log(`Attempting to refresh order: ${orderSerial}`);
-        // Обновляем данные заказа
-        await ordersStore.fetchOrderDetail(orderSerial);
-        if (ordersStore.error) {
-          console.error('Error refreshing order details:', ordersStore.error);
-        } else {
-          console.log(`Order ${orderSerial} details refreshed successfully`);
-        }
-      } else {
-        console.log('No order serial found in current task to refresh order details.');
+        console.log(`Order serial found: ${orderSerial}`);
       }
     }
   } catch (err) {
-    console.error('Unexpected error during status or order update process:', err);
+    console.error('Unexpected error during status update:', err);
   }
 };
 
@@ -126,6 +121,23 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
 const formatExecutorName = (executor: { name: string; surname: string } | null): string => {
   if (!executor) return 'Не назначен';
   return `${executor.surname} ${executor.name}`;
+};
+
+const closeForm = async () => {
+  const orderSerial = currentTask.value?.order?.serial;
+
+  if (isStatusUpdated.value && orderSerial) {
+    await ordersStore.fetchOrderDetail(orderSerial);
+    if (ordersStore.error) {
+      console.error('Error refreshing order details:', ordersStore.error);
+    } else {
+      console.log(`Order ${orderSerial} refreshed after form close`);
+    }
+  }
+
+  // Сброс текущей задачи или скрытие модалки
+  tasksStore.clearCurrentTask(); // или hide modal и т.д.
+  isStatusUpdated.value = false; // Сбрасываем флаг
 };
 </script>
 
@@ -244,5 +256,7 @@ const formatExecutorName = (executor: { name: string; surname: string } | null):
     <div v-else class="text-center py-8 text-red-500">
       Не удалось загрузить данные задачи
     </div>
+
+    <Button label="Закрыть" @click="closeForm" />
   </BaseModal>
 </template>
