@@ -2,7 +2,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { typeTask} from "src/stores/storeTasks.ts"
+import { typeTask } from "src/types/typeTask.ts";
 import 'primeicons/primeicons.css';
 import TaskDetailView from './TaskDetailView.vue'; // Импортируем компонент с детальной информацией
 import { useThemeStore } from "@/stores/storeTheme.ts"; // Импортируем хранилище темы
