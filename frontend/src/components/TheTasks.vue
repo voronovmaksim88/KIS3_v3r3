@@ -1,15 +1,15 @@
 <!-- src/components/TheTasks.vue -->
 <script setup lang="ts">
-import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTasksStore } from '../stores/storeTasks';
-import { useOrdersStore } from '../stores/storeOrders'; // Добавляем импорт storeOrders
+import { useOrdersStore } from '../stores/storeOrders';
 import { type TaskFilters } from '../stores/storeTasks';
 import { useThemeStore } from '../stores/storeTheme';
 import { useTableStyles } from '../composables/useTableStyles';
 import Select from 'primevue/select';
-import Toast from 'primevue/toast'; // Импортируем Toast
-import { useToast } from 'primevue/usetoast'; // Импортируем хук useToast
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 
 // Композитные компоненты
@@ -41,6 +41,9 @@ const localFilters = ref<TaskFilters>({
   executor_uuid: null,
 });
 
+// Состояние загрузки для каждого статуса задачи
+const loadingStatuses = ref<Record<number, boolean>>({});
+
 // Watch for store filter changes to sync with local filters
 watch(
     () => tasksStore.filters,
@@ -49,8 +52,6 @@ watch(
     },
     { deep: true }
 );
-
-
 
 // Опции для статуса
 const statusOptions = [
@@ -64,6 +65,9 @@ const statusOptions = [
 // Функция для обновления статуса задачи
 const updateStatus = async (taskId: number, statusId: number) => {
   try {
+    // Устанавливаем флаг загрузки для задачи
+    loadingStatuses.value[taskId] = true;
+
     await tasksStore.updateTaskStatus(taskId, statusId);
     if (tasksStore.error) {
       console.error('Error updating task status:', tasksStore.error);
@@ -107,13 +111,16 @@ const updateStatus = async (taskId: number, statusId: number) => {
       detail: 'Произошла непредвиденная ошибка при обновлении статуса',
       life: 5000,
     });
+  } finally {
+    // Сбрасываем флаг загрузки после завершения запроса
+    loadingStatuses.value[taskId] = false;
   }
 };
 
 // Выполняется при монтировании компонента
 onMounted(() => {
   if (!tasksStore.tasks.length && !tasksStore.isLoading) {
-    tasksStore.fetchTasks(); // Предполагается, что такой метод существует в store
+    tasksStore.fetchTasks();
   }
 });
 
@@ -125,14 +132,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="container mx-auto p-4">
-    <!-- Добавляем компонент Toast -->
+    <!-- Компонент Toast для уведомлений -->
     <Toast />
 
-    <!-- Индикатор загрузки -->
+    <!-- Индикатор загрузки для всей таблицы -->
     <div v-if="tasksStore.isLoading && tasksStore.tasks.length === 0" class="w-full flex justify-center my-4">
       <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
     </div>
-
 
     <div v-else-if="tasksStore.error" class="text-red-500 text-center py-4">
       {{ tasksStore.error }}
@@ -188,32 +194,45 @@ onBeforeUnmount(() => {
             <td :class="tdBaseTextClass">{{ task.description }}</td>
             <!-- Статус задачи -->
             <td class="px-4 py-2" :class="tdBaseTextClass">
-              <Select
-                  :modelValue="task.status_id"
-                  :options="statusOptions"
-                  optionValue="value"
-                  optionLabel="label"
-                  placeholder="Выберите статус"
-                  class="w-full"
-                  @update:modelValue="updateStatus(task.id, $event)"
-              >
-                <template #value="slotProps">
-                    <span
-                        v-if="slotProps.value"
-                        :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
-                    >
-                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
-                    </span>
-                  <span v-else>{{ slotProps.placeholder }}</span>
-                </template>
-                <template #option="slotProps">
-                  <div class="flex items-center">
-                      <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
-                        {{ slotProps.option.label }}
+              <div class="relative flex items-center">
+                <!-- Спиннер загрузки -->
+                <div
+                    v-if="loadingStatuses[task.id]"
+                    class="absolute inset-0 flex items-center justify-center"
+                >
+                  <div
+                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <!-- Селектор статуса -->
+                <Select
+                    :modelValue="task.status_id"
+                    :options="statusOptions"
+                    optionValue="value"
+                    optionLabel="label"
+                    placeholder="Выберите статус"
+                    class="w-full"
+                    :class="{ 'opacity-50 pointer-events-none': loadingStatuses[task.id] }"
+                    @update:modelValue="updateStatus(task.id, $event)"
+                >
+                  <template #value="slotProps">
+                      <span
+                          v-if="slotProps.value"
+                          :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
+                      >
+                        {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                       </span>
-                  </div>
-                </template>
-              </Select>
+                    <span v-else>{{ slotProps.placeholder }}</span>
+                  </template>
+                  <template #option="slotProps">
+                    <div class="flex items-center">
+                        <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                          {{ slotProps.option.label }}
+                        </span>
+                    </div>
+                  </template>
+                </Select>
+              </div>
             </td>
             <td :class="tdBaseTextClass"></td>
             <td :class="tdBaseTextClass"></td>
@@ -237,5 +256,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-
+/* Стили для спиннера загрузки статуса */
+.relative {
+  position: relative;
+}
 </style>
