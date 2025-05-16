@@ -30,7 +30,7 @@ class CommentResponse(BaseModel):
     order_id: str
     moment_of_creation: Optional[datetime]  # Момент создания может быть None, если default не сработал до commit
     text: str
-    person_uuid: uuid.UUID  # Используем UUID
+    person: PersonSchema
 
     # Конфигурация для совместимости с ORM-моделями SQLAlchemy
     # Для Pydantic v2+
