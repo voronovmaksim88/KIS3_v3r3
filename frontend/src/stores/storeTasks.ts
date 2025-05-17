@@ -4,6 +4,7 @@ import axios, { AxiosError } from 'axios';
 import type { Ref } from 'vue';
 import { getApiUrl } from '../utils/apiUrlHelper';
 import { typeTask } from "@/types/typeTask.ts";
+import { useOrdersStore } from '@/stores/storeOrders'; // Импортируем useOrdersStore
 
 // Интерфейс для ответа пагинации
 interface PaginatedTaskResponse {
@@ -36,6 +37,26 @@ export const useTasksStore = defineStore('tasks', () => {
     const isLoading: Ref<boolean> = ref(false);
     const isCurrentTaskLoading: Ref<boolean> = ref(false);
     const error: Ref<string | null> = ref(null);
+
+    // Получаем доступ к ordersStore
+    const ordersStore = useOrdersStore();
+
+    // Вспомогательная функция для обновления currentOrderDetail.tasks
+    const updateOrderDetailTask = (updatedTask: typeTask) => {
+        if (!ordersStore.currentOrderDetail?.tasks) {
+            return; // Если currentOrderDetail или tasks не существуют, выходим
+        }
+
+        const taskIndex = ordersStore.currentOrderDetail.tasks.findIndex(
+            task => task.id === updatedTask.id
+        );
+
+        if (taskIndex !== -1) {
+            // Обновляем задачу в массиве tasks, сохраняя реактивность
+            ordersStore.currentOrderDetail.tasks[taskIndex] = { ...updatedTask };
+            console.log(`Updated task ${updatedTask.id} in currentOrderDetail.tasks`);
+        }
+    };
 
     // Метод для получения задач
     async function fetchTasks(): Promise<void> {
@@ -93,6 +114,11 @@ export const useTasksStore = defineStore('tasks', () => {
             );
             currentTask.value = response.data as typeTask;
             console.log(`Fetched task ${taskId}`);
+
+            // Обновляем currentOrderDetail.tasks, если задача там есть
+            if (currentTask.value) {
+                updateOrderDetailTask(currentTask.value);
+            }
         } catch (err: unknown) {
             if (err instanceof AxiosError) {
                 error.value = err.response?.data?.detail || 'Failed to fetch task';
@@ -135,6 +161,9 @@ export const useTasksStore = defineStore('tasks', () => {
             if (currentTask.value && currentTask.value.id === taskId) {
                 currentTask.value = updatedTask;
             }
+
+            // Обновляем currentOrderDetail.tasks, если задача там есть
+            updateOrderDetailTask(updatedTask);
 
             console.log(`Task ${taskId} updated successfully in store: ${successMessage}`);
         } catch (err: unknown) {

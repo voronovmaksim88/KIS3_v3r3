@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
-import { useOrdersStore } from '@/stores/storeOrders';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
 import Select from 'primevue/select';
@@ -11,7 +10,6 @@ import { useToast } from 'primevue/usetoast';
 import Toast from 'primevue/toast';
 import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
-import Button from 'primevue/button';
 import { typeTask } from '@/types/typeTask.ts';
 
 interface Props {
@@ -24,9 +22,6 @@ const props = defineProps<Props>();
 const tasksStore = useTasksStore();
 const currentTask = computed(() => tasksStore.currentTask as typeTask | null);
 const isLoading = computed(() => tasksStore.isCurrentTaskLoading);
-
-// Store для заказов
-const ordersStore = useOrdersStore();
 
 // Store темы
 const themeStore = useThemeStore();
@@ -198,27 +193,6 @@ const formatExecutorName = (executor: { name: string; surname: string } | null):
 
 const isSaving = ref(false); // Флаг для блокировки кнопки
 
-const closeForm = async () => {
-  const orderSerial = currentTask.value?.order?.serial;
-
-  if (isStatusUpdated.value && orderSerial) {
-    await ordersStore.fetchOrderDetail(orderSerial);
-    if (ordersStore.error) {
-      console.error('Error refreshing order details:', ordersStore.error);
-    } else {
-      console.log(`Order ${orderSerial} refreshed after form close`);
-    }
-  }
-
-  // Сброс текущей задачи или скрытие модалки
-  tasksStore.clearCurrentTask();
-  isStatusUpdated.value = false;
-
-  // Если onClose был передан как проп — вызываем его
-  if (props.onClose) {
-    props.onClose();
-  }
-};
 </script>
 
 <template>
@@ -371,11 +345,7 @@ const closeForm = async () => {
     <div v-else-if="!isLoading && !currentTask" class="text-center py-8 text-red-500">
       Не удалось загрузить данные задачи
     </div>
-    <Button
-        label="Закрыть"
-        @click="closeForm"
-        :disabled="isSaving"
-    />
+
   </BaseModal>
 </template>
 
