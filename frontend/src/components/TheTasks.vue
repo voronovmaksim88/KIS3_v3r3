@@ -235,7 +235,7 @@ onBeforeUnmount(() => {
             <!-- Имя задачи -->
             <td
                 :class="tdBaseTextClass"
-                class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
                 @click="openNameEditDialog(task.id, task.name)"
             >
               {{ task.name }}
