@@ -1,7 +1,7 @@
-<!-- OrderNameEditDialog.vue -->
+<!-- TaskNameEditDialog.vue -->
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
-import { useOrdersStore } from '@/stores/storeOrders';
+import { computed, ref, watch } from 'vue';
+import { useTasksStore } from '@/stores/storeTasks';
 import { useToast } from 'primevue/usetoast';
 
 // PrimeVue компоненты
@@ -12,7 +12,7 @@ import Button from 'primevue/button';
 // Определяем пропсы
 const props = defineProps<{
   visible: boolean; // Для v-model
-  orderId: string | null;
+  taskId: number | null;
   initialName: string;
 }>();
 
@@ -20,36 +20,36 @@ const props = defineProps<{
 const emit = defineEmits(['update:visible', 'update-name', 'cancel']);
 
 // Локальное состояние для диалога
-const newOrderName = ref('');
-const originalOrderName = ref(''); // Храним исходное название для проверки изменений
+const newTaskName = ref('');
+const originalTaskName = ref(''); // Храним исходное название для проверки изменений
 const isNameUpdateLoading = ref(false);
 
 // Store и утилиты
-const ordersStore = useOrdersStore();
-const toast = useToast(); // Используем toast здесь для уведомлений об успешном/неуспешном обновлении
+const tasksStore = useTasksStore();
+const toast = useToast(); // Используем toast для уведомлений
 
 // Инициализация локального состояния при изменении initialName или открытии диалога
 watch(() => props.initialName, (newName) => {
-  newOrderName.value = newName;
-  originalOrderName.value = newName;
+  newTaskName.value = newName;
+  originalTaskName.value = newName;
 }, { immediate: true });
 
 watch(() => props.visible, (isVisible) => {
   if (isVisible) {
     // Сброс состояния при открытии
-    newOrderName.value = props.initialName;
-    originalOrderName.value = props.initialName;
+    newTaskName.value = props.initialName;
+    originalTaskName.value = props.initialName;
     isNameUpdateLoading.value = false;
   }
 });
 
 /**
- * Обработчик сохранения нового названия заказа
+ * Обработчик сохранения нового имени задачи
  */
-const handleUpdateOrderName = async () => {
-  if (!props.orderId || newOrderName.value.trim() === '' || newOrderName.value.trim() === originalOrderName.value) {
+const handleUpdateTaskName = async () => {
+  if (!props.taskId || newTaskName.value.trim() === '' || newTaskName.value.trim() === originalTaskName.value) {
     // Если нет ID, имя пустое или не изменилось, просто закрываем или ничего не делаем
-    if (props.orderId && newOrderName.value.trim() === originalOrderName.value) {
+    if (props.taskId && newTaskName.value.trim() === originalTaskName.value) {
       emit('update:visible', false); // Закрыть, если имя не изменилось
     }
     return;
@@ -58,31 +58,32 @@ const handleUpdateOrderName = async () => {
   try {
     isNameUpdateLoading.value = true;
 
-    // Обновляем название заказа через store
-    await ordersStore.updateOrder(props.orderId, {
-      name: newOrderName.value.trim()
-    });
+    // Обновляем имя задачи через store
+    await tasksStore.updateTaskName(props.taskId, newTaskName.value.trim());
 
-    // Показываем уведомление об успехе
+    if (tasksStore.error) {
+      throw new Error(tasksStore.error);
+    }
+
+    // Уведомление об успехе
     toast.add({
       severity: 'success',
       summary: 'Успешно',
-      detail: `Название заказа #${props.orderId} обновлено`,
-      life: 3000
+      detail: `Имя задачи #${props.taskId} обновлено`,
+      life: 3000,
     });
 
     // Оповещаем родителя об успешном обновлении и закрываем диалог
-    emit('update-name', { orderId: props.orderId, newName: newOrderName.value.trim() });
+    emit('update-name', { taskId: props.taskId, newName: newTaskName.value.trim() });
     emit('update:visible', false);
-
   } catch (error) {
-    console.error('Ошибка при изменении названия заказа:', error);
-    // Показываем уведомление об ошибке
+    console.error('Ошибка при изменении имени задачи:', error);
+    // Уведомление об ошибке
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: `Не удалось изменить название заказа #${props.orderId}`,
-      life: 5000
+      detail: tasksStore.error || `Не удалось изменить имя задачи #${props.taskId}`,
+      life: 5000,
     });
   } finally {
     isNameUpdateLoading.value = false;
@@ -90,47 +91,43 @@ const handleUpdateOrderName = async () => {
 };
 
 /**
- * Отменяет редактирование названия и закрывает диалог
+ * Отменяет редактирование имени и закрывает диалог
  */
 const cancelEdit = () => {
   emit('update:visible', false);
   emit('cancel');
 };
 
-// Проверка, изменилось ли название и не пустое ли оно для кнопки "Сохранить"
+// Проверка, изменилось ли имя и не пустое ли оно для кнопки "Сохранить"
 const isSaveDisabled = computed(() => {
-  return newOrderName.value.trim() === '' || newOrderName.value.trim() === originalOrderName.value || isNameUpdateLoading.value;
+  return newTaskName.value.trim() === '' || newTaskName.value.trim() === originalTaskName.value || isNameUpdateLoading.value;
 });
-
 </script>
 
 <template>
-
-
-
   <Dialog
       :visible="visible"
       @update:visible="(value) => $emit('update:visible', value)"
       modal
-      header="Изменение названия заказа"
+      header="Изменение имени задачи"
       :style="{ width: '450px' }"
       :closable="true"
       :dismissableMask="true"
   >
     <template #header>
       <div :class="['p-dialog-header']">
-        <span class="text-lg font-bold">Изменение названия заказа</span>
+        <span class="text-lg font-bold">Изменение имени задачи</span>
       </div>
     </template>
 
     <div :class="['p-4']">
       <div class="mb-4">
-        <label for="orderNameEdit" class="block mb-2">Название заказа</label>
+        <label for="taskNameEdit" class="block mb-2">Имя задачи</label>
         <InputText
-            id="orderNameEdit"
-            v-model="newOrderName"
+            id="taskNameEdit"
+            v-model="newTaskName"
             class="w-full p-2"
-            @keyup.enter="!isSaveDisabled && handleUpdateOrderName()"
+            @keyup.enter="!isSaveDisabled && handleUpdateTaskName()"
         />
       </div>
     </div>
@@ -146,7 +143,7 @@ const isSaveDisabled = computed(() => {
         </Button>
 
         <Button
-            @click="handleUpdateOrderName"
+            @click="handleUpdateTaskName"
             label="Сохранить"
             :loading="isNameUpdateLoading"
             :disabled="isSaveDisabled"
@@ -159,6 +156,5 @@ const isSaveDisabled = computed(() => {
 </template>
 
 <style scoped>
-/* Стили для диалога могут быть здесь, или оставлены в TheOrders с :deep */
-/* Если оставите в TheOrders, убедитесь, что селекторы правильные */
+/* Стили для диалога, если нужны, или использовать TailwindCSS классы */
 </style>

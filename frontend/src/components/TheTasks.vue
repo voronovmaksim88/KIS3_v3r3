@@ -11,6 +11,8 @@ import Select from 'primevue/select';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
+import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
+
 
 // Композитные компоненты
 const {
@@ -41,6 +43,11 @@ const localFilters = ref<TaskFilters>({
   executor_uuid: null,
 });
 
+// Состояние для диалога изменения имени задачи
+const showNameEditDialog = ref(false);
+const selectedTaskId = ref<number | null>(null);
+const selectedTaskName = ref('');
+
 // Состояние загрузки для каждого статуса задачи
 const loadingStatuses = ref<Record<number, boolean>>({});
 
@@ -69,52 +76,81 @@ const updateStatus = async (taskId: number, statusId: number) => {
     loadingStatuses.value[taskId] = true;
 
     await tasksStore.updateTaskStatus(taskId, statusId);
-    if (tasksStore.error) {
-      console.error('Error updating task status:', tasksStore.error);
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: `Не удалось изменить статус задачи #${taskId}`,
-        life: 5000,
-      });
-    } else {
-      console.log(`Status for task ${taskId} updated successfully`);
-      toast.add({
-        severity: 'success',
-        summary: 'Успешно',
-        detail: `Статус задачи #${taskId} успешно изменен`,
-        life: 3000,
-      });
 
-      // Проверяем, есть ли связанный заказ
-      const task = tasksStore.tasks.find(t => t.id === taskId);
-      if (task?.order?.serial) {
-        await ordersStore.fetchOrderDetail(task.order.serial);
-        if (ordersStore.error) {
-          console.error('Error updating order:', ordersStore.error);
-          toast.add({
-            severity: 'error',
-            summary: 'Ошибка',
-            detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-            life: 5000,
-          });
-        } else {
-          console.log(`Order ${task.order.serial} details updated successfully`);
-        }
+    if (tasksStore.error) {
+      throw new Error(tasksStore.error);
+    }
+
+    console.log(`Status for task ${taskId} updated successfully`);
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Статус задачи #${taskId} успешно изменен`,
+      life: 3000,
+    });
+
+    // Проверяем, есть ли связанный заказ
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        console.error('Error updating order:', ordersStore.error);
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      } else {
+        console.log(`Order ${task.order.serial} details updated successfully`);
       }
     }
   } catch (err) {
-    console.error('Unexpected error during status update:', err);
+    console.error('Error updating task status:', err);
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Произошла непредвиденная ошибка при обновлении статуса',
+      detail: tasksStore.error || `Не удалось изменить статус задачи #${taskId}`,
       life: 5000,
     });
   } finally {
     // Сбрасываем флаг загрузки после завершения запроса
     loadingStatuses.value[taskId] = false;
   }
+};
+
+// Обработчик клика на имя задачи для открытия диалога
+const openNameEditDialog = (taskId: number, taskName: string) => {
+  selectedTaskId.value = taskId;
+  selectedTaskName.value = taskName;
+  showNameEditDialog.value = true;
+};
+
+// Обработчик успешного обновления имени
+const handleNameUpdate = ({ taskId, newName }: { taskId: number; newName: string }) => {
+  console.log(`Task ${taskId} name updated to ${newName}`);
+  showNameEditDialog.value = false;
+  if (tasksStore.error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || `Не удалось изменить имя задачи #${taskId}`,
+      life: 5000,
+    });
+  } else {
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Имя задачи #${taskId} обновлено`,
+      life: 3000,
+    });
+  }
+};
+
+// Обработчик отмены редактирования
+const handleNameEditCancel = () => {
+  console.log('Task name edit cancelled');
+  showNameEditDialog.value = false;
 };
 
 // Выполняется при монтировании компонента
@@ -131,6 +167,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <TaskNameEditDialog
+      v-model:visible="showNameEditDialog"
+      :task-id="selectedTaskId"
+      :initial-name="selectedTaskName"
+      @update-name="handleNameUpdate"
+      @cancel="handleNameEditCancel"
+  />
+
   <div class="w-full p-4">
     <!-- Компонент Toast для уведомлений -->
     <Toast />
@@ -198,7 +242,13 @@ onBeforeUnmount(() => {
             <td :class="tdBaseTextClass"> {{ task.order?.serial }}  </td>
 
             <!-- Имя задачи -->
-            <td :class="tdBaseTextClass">{{ task.name }}</td>
+            <td
+                :class="tdBaseTextClass"
+                class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                @click="openNameEditDialog(task.id, task.name)"
+            >
+              {{ task.name }}
+            </td>
 
             <!-- Описание задачи -->
             <td :class="tdBaseTextClass">{{ task.description }}</td>

@@ -1,12 +1,9 @@
-// storeTasks.ts
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios, { AxiosError } from 'axios';
 import type { Ref } from 'vue';
 import { getApiUrl } from '../utils/apiUrlHelper';
-import { typeTask} from "@/types/typeTask.ts";
-import { useToast } from 'primevue/usetoast';
-
+import { typeTask } from "@/types/typeTask.ts";
 
 // Интерфейс для ответа пагинации
 interface PaginatedTaskResponse {
@@ -15,7 +12,6 @@ interface PaginatedTaskResponse {
     skip: number;
     data: typeTask[];
 }
-
 
 // Интерфейс для параметров фильтрации
 export interface TaskFilters {
@@ -117,7 +113,6 @@ export const useTasksStore = defineStore('tasks', () => {
         params: Record<string, any> = {},
         successMessage: string
     ): Promise<void> {
-        const toast = useToast();
         isLoading.value = true;
         error.value = null;
 
@@ -142,14 +137,6 @@ export const useTasksStore = defineStore('tasks', () => {
             }
 
             console.log(`Task ${taskId} updated successfully in store: ${successMessage}`);
-
-            // Уведомление об успехе
-            toast.add({
-                severity: 'success',
-                summary: 'Успех',
-                detail: successMessage,
-                life: 3000,
-            });
         } catch (err: unknown) {
             if (err instanceof AxiosError) {
                 error.value = err.response?.data?.detail || `Не удалось обновить задачу`;
@@ -157,14 +144,6 @@ export const useTasksStore = defineStore('tasks', () => {
                 error.value = 'Произошла непредвиденная ошибка при обновлении задачи';
             }
             console.error(`Error updating task in store:`, err);
-
-            // Уведомление об ошибке
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка',
-                detail: error.value,
-                life: 3000,
-            });
         } finally {
             isLoading.value = false;
         }
@@ -174,13 +153,6 @@ export const useTasksStore = defineStore('tasks', () => {
     async function updateTaskStatus(taskId: number, statusId: number): Promise<void> {
         if (statusId < 1 || statusId > 5) {
             error.value = 'Недопустимый статус. Должен быть от 1 до 5';
-            const toast = useToast();
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка',
-                detail: error.value,
-                life: 3000,
-            });
             return;
         }
         await patchTask(
@@ -196,33 +168,19 @@ export const useTasksStore = defineStore('tasks', () => {
     async function updateTaskName(taskId: number, newName: string): Promise<void> {
         if (!newName || newName.trim() === '') {
             error.value = 'Имя задачи не может быть пустым';
-            const toast = useToast();
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка',
-                detail: error.value,
-                life: 3000,
-            });
             return;
         }
 
         if (newName.length > 128) {
             error.value = 'Имя задачи не должно превышать 128 символов';
-            const toast = useToast();
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка',
-                detail: error.value,
-                life: 3000,
-            });
             return;
         }
 
         await patchTask(
             taskId,
             `update_name/${taskId}`,
-            { new_name: newName.trim() },
             {},
+            { new_name: newName.trim() },
             `Имя задачи успешно обновлено`
         );
     }
