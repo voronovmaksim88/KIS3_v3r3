@@ -1,17 +1,18 @@
 <!-- src/components/TheTasks.vue -->
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useTasksStore } from '../stores/storeTasks';
-import { useOrdersStore } from '../stores/storeOrders';
-import { type TaskFilters } from '../stores/storeTasks';
-import { useThemeStore } from '../stores/storeTheme';
-import { useTableStyles } from '../composables/useTableStyles';
+import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import {storeToRefs} from 'pinia';
+import {useTasksStore} from '../stores/storeTasks';
+import {useOrdersStore} from '../stores/storeOrders';
+import {type TaskFilters} from '../stores/storeTasks';
+import {useThemeStore} from '../stores/storeTheme';
+import {useTableStyles} from '../composables/useTableStyles';
 import Select from 'primevue/select';
 import Toast from 'primevue/toast';
-import { useToast } from 'primevue/usetoast';
-import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
+import {useToast} from 'primevue/usetoast';
+import {getTaskStatusColor} from '@/utils/getStatusColor.ts';
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
+import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
 
 
 // Композитные компоненты
@@ -28,7 +29,7 @@ const toast = useToast();
 
 // Store темы
 const themeStore = useThemeStore();
-const { theme: currentTheme } = storeToRefs(themeStore);
+const {theme: currentTheme} = storeToRefs(themeStore);
 
 // Store задач
 const tasksStore = useTasksStore();
@@ -51,22 +52,26 @@ const selectedTaskName = ref('');
 // Состояние загрузки для каждого статуса задачи
 const loadingStatuses = ref<Record<number, boolean>>({});
 
+// Состояние для диалога изменения описания задачи
+const showDescriptionEditDialog = ref(false);
+const selectedTaskDescription = ref<string | null>(null);
+
 // Watch for store filter changes to sync with local filters
 watch(
     () => tasksStore.filters,
     (newFilters) => {
-      localFilters.value = { ...newFilters };
+      localFilters.value = {...newFilters};
     },
-    { deep: true }
+    {deep: true}
 );
 
 // Опции для статуса
 const statusOptions = [
-  { value: 1, label: 'Не начата' },
-  { value: 2, label: 'В работе' },
-  { value: 3, label: 'На паузе' },
-  { value: 4, label: 'Завершена' },
-  { value: 5, label: 'Отменена' },
+  {value: 1, label: 'Не начата'},
+  {value: 2, label: 'В работе'},
+  {value: 3, label: 'На паузе'},
+  {value: 4, label: 'Завершена'},
+  {value: 5, label: 'Отменена'},
 ];
 
 // Функция для обновления статуса задачи
@@ -133,7 +138,7 @@ const openNameEditDialog = (taskId: number, taskName: string) => {
 };
 
 // Обработчик успешного обновления имени
-const handleNameUpdate = ({ taskId, newName }: { taskId: number; newName: string }) => {
+const handleNameUpdate = ({taskId, newName}: { taskId: number; newName: string }) => {
   console.log(`Task ${taskId} name updated to ${newName}`);
   showNameEditDialog.value = false;
 };
@@ -142,6 +147,25 @@ const handleNameUpdate = ({ taskId, newName }: { taskId: number; newName: string
 const handleNameEditCancel = () => {
   console.log('Task name edit cancelled');
   showNameEditDialog.value = false;
+};
+
+// Обработчик клика на описание задачи для открытия диалога
+const openDescriptionEditDialog = (taskId: number, description: string | null) => {
+  selectedTaskId.value = taskId;
+  selectedTaskDescription.value = description;
+  showDescriptionEditDialog.value = true;
+};
+
+// Обработчик успешного обновления описания
+const handleDescriptionUpdate = ({taskId, newDescription}: { taskId: number; newDescription: string | null }) => {
+  console.log(`Task ${taskId} description updated to ${newDescription}`);
+  showDescriptionEditDialog.value = false;
+};
+
+// Обработчик отмены редактирования описания
+const handleDescriptionEditCancel = () => {
+  console.log('Task description edit cancelled');
+  showDescriptionEditDialog.value = false;
 };
 
 // Выполняется при монтировании компонента
@@ -153,7 +177,7 @@ onMounted(() => {
 
 // Очистка задач при размонтировании компонента
 onBeforeUnmount(() => {
-  tasksStore.$patch({ tasks: [] });
+  tasksStore.$patch({tasks: []});
 });
 </script>
 
@@ -166,9 +190,17 @@ onBeforeUnmount(() => {
       @cancel="handleNameEditCancel"
   />
 
+  <TaskDescriptionEditDialog
+      v-model:visible="showDescriptionEditDialog"
+      :task-id="selectedTaskId"
+      :initial-description="selectedTaskDescription"
+      @update-description="handleDescriptionUpdate"
+      @cancel="handleDescriptionEditCancel"
+  />
+
   <div class="w-full p-4">
     <!-- Компонент Toast для уведомлений -->
-    <Toast />
+    <Toast/>
 
     <!-- Индикатор загрузки для всей таблицы -->
     <div v-if="tasksStore.isLoading && tasksStore.tasks.length === 0" class="w-full flex justify-center my-4">
@@ -179,16 +211,16 @@ onBeforeUnmount(() => {
       {{ tasksStore.error }}
     </div>
 
-    <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" >
+    <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)">
       <table :class="tableBaseClass">
         <colgroup>
-          <col style="width: 3%" />
-          <col style="width: 4%" />
-          <col style="width: 15%" />
-          <col style="width: 20%" />
-          <col style="width: 10%" />
-          <col style="width: 23%" />
-          <col style="width: 20%" />
+          <col style="width: 3%"/>
+          <col style="width: 4%"/>
+          <col style="width: 15%"/>
+          <col style="width: 20%"/>
+          <col style="width: 10%"/>
+          <col style="width: 23%"/>
+          <col style="width: 20%"/>
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
@@ -230,7 +262,7 @@ onBeforeUnmount(() => {
             <td :class="tdBaseTextClass">{{ task.id }}</td>
 
             <!-- заказ к которому принадлежит задача -->
-            <td :class="tdBaseTextClass"> {{ task.order?.serial }}  </td>
+            <td :class="tdBaseTextClass"> {{ task.order?.serial }}</td>
 
             <!-- Имя задачи -->
             <td
@@ -242,7 +274,18 @@ onBeforeUnmount(() => {
             </td>
 
             <!-- Описание задачи -->
-            <td :class="tdBaseTextClass">{{ task.description }}</td>
+            <td
+              :class="[
+                tdBaseTextClass,
+                'cursor-pointer',
+                'hover:bg-gray-500',
+                'dark:hover:bg-gray-700',
+                {'text-sm text-gray-400 italic': !task.description}
+              ]"
+                @click="openDescriptionEditDialog(task.id, task.description)"
+            >
+              {{ task.description || 'Нет описания' }}
+            </td>
 
             <!-- Статус задачи -->
             <td class="px-4 py-2" :class="tdBaseTextClass">
