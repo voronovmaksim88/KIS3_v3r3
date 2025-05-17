@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
@@ -78,6 +78,9 @@ async def read_tasks(
         total = total_result.scalar_one_or_none() or 0
         logger.info(f"Total tasks found: {total}")
 
+        # Добавляем сортировку по id по умолчанию (по возрастанию)
+        query = query.order_by(Task.id.asc())
+
         # Применяем пагинацию
         query = query.offset(skip).limit(limit)
 
@@ -107,6 +110,52 @@ async def read_tasks(
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при получении задач: {str(e)}"
+        )
+
+
+@router.get("/read/{task_id}", response_model=TaskRead)
+async def read_current_task(
+        task_id: int,
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Получить детальную информацию об одной задаче по её ID.
+
+    Параметры:
+    - task_id: ID задачи
+
+    Возвращает:
+    - TaskRead: Полная информация о задаче, включая связанные данные
+    """
+    try:
+        # Логируем входные параметры
+        logger.info(f"Received request to get task with id={task_id}")
+
+        # Формируем запрос с подгрузкой связанных моделей
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+
+        # Выполняем запрос
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        logger.info(f"Successfully retrieved task {task_id}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error retrieving task: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при получении задачи: {str(e)}"
         )
 
 
@@ -168,32 +217,36 @@ async def update_task_status(
         )
 
 
-@router.get("/read/{task_id}", response_model=TaskRead)
-async def read_current_task(
-    task_id: int,
-    session: AsyncSession = Depends(get_async_db)
+
+@router.patch("/update_name/{task_id}", response_model=TaskRead)
+async def update_task_name(
+        task_id: int,
+        new_name: str = Body(..., description="New name for the task", min_length=1, max_length=128),
+        session: AsyncSession = Depends(get_async_db)
 ):
     """
-    Получить детальную информацию об одной задаче по её ID.
+    Обновить имя задачи по её ID.
 
     Параметры:
-    - task_id: ID задачи
+    - task_id: ID задачи, которую нужно обновить.
+    - new_name: Новое имя задачи (строка).
 
     Возвращает:
-    - TaskRead: Полная информация о задаче, включая связанные данные
+    - TaskRead: Обновлённые данные задачи.
     """
     try:
-        # Логируем входные параметры
-        logger.info(f"Received request to get task with id={task_id}")
+        logger.info(f"Received request to update task {task_id} with new name={new_name}")
 
-        # Формируем запрос с подгрузкой связанных моделей
+        # Проверяем, что имя предоставлено и не пустое
+        if not new_name or new_name.strip() == "":
+            raise HTTPException(status_code=400, detail="Task name cannot be empty")
+
+        # Ищем задачу по ID
         query = select(Task).where(Task.id == task_id).options(
             selectinload(Task.payment_status),
             selectinload(Task.order),
             selectinload(Task.executor)
         )
-
-        # Выполняем запрос
         result = await session.execute(query)
         task = result.scalars().first()
 
@@ -201,14 +254,22 @@ async def read_current_task(
             logger.warning(f"Task with id {task_id} not found")
             raise HTTPException(status_code=404, detail="Task not found")
 
-        logger.info(f"Successfully retrieved task {task_id}")
+        # Обновляем имя задачи
+        update_query = update(Task).where(Task.id == task_id).values(name=new_name.strip())
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} name updated to {new_name}")
         return TaskRead.model_validate(task)
 
     except HTTPException as he:
         raise he
     except Exception as e:
-        logger.error(f"Error retrieving task: {str(e)}", exc_info=True)
+        logger.error(f"Error updating task name: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Ошибка при получении задачи: {str(e)}"
+            detail=f"Ошибка при обновлении имени задачи: {str(e)}"
         )
