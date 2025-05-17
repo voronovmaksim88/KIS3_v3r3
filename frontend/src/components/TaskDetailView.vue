@@ -274,6 +274,7 @@ const closeForm = async () => {
                   :disabled="isNameLoading"
                   @blur="updateTaskName(currentTask.id, taskName)"
                   placeholder="Введите название задачи"
+                  @keyup.enter="updateTaskName(currentTask.id, taskName)"
               />
             </div>
           </div>
