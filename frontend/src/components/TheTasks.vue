@@ -78,7 +78,13 @@ const updateStatus = async (taskId: number, statusId: number) => {
     await tasksStore.updateTaskStatus(taskId, statusId);
 
     if (tasksStore.error) {
-      throw new Error(tasksStore.error);
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить статус задачи #${taskId}`,
+        life: 5000,
+      });
+      return;
     }
 
     console.log(`Status for task ${taskId} updated successfully`);
@@ -130,21 +136,6 @@ const openNameEditDialog = (taskId: number, taskName: string) => {
 const handleNameUpdate = ({ taskId, newName }: { taskId: number; newName: string }) => {
   console.log(`Task ${taskId} name updated to ${newName}`);
   showNameEditDialog.value = false;
-  if (tasksStore.error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось изменить имя задачи #${taskId}`,
-      life: 5000,
-    });
-  } else {
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Имя задачи #${taskId} обновлено`,
-      life: 3000,
-    });
-  }
 };
 
 // Обработчик отмены редактирования

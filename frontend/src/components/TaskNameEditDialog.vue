@@ -46,12 +46,32 @@ watch(() => props.visible, (isVisible) => {
 /**
  * Обработчик сохранения нового имени задачи
  */
+/**
+ * Обработчик сохранения нового имени задачи
+ */
 const handleUpdateTaskName = async () => {
   if (!props.taskId || newTaskName.value.trim() === '' || newTaskName.value.trim() === originalTaskName.value) {
     // Если нет ID, имя пустое или не изменилось, просто закрываем или ничего не делаем
     if (props.taskId && newTaskName.value.trim() === originalTaskName.value) {
       emit('update:visible', false); // Закрыть, если имя не изменилось
+    } else if (newTaskName.value.trim() === '') {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: 'Имя задачи не может быть пустым',
+        life: 5000,
+      });
     }
+    return;
+  }
+
+  if (newTaskName.value.trim().length > 128) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Имя задачи не должно превышать 128 символов',
+      life: 5000,
+    });
     return;
   }
 
@@ -62,7 +82,13 @@ const handleUpdateTaskName = async () => {
     await tasksStore.updateTaskName(props.taskId, newTaskName.value.trim());
 
     if (tasksStore.error) {
-      throw new Error(tasksStore.error);
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить имя задачи #${props.taskId}`,
+        life: 5000,
+      });
+      return;
     }
 
     // Уведомление об успехе
@@ -78,7 +104,6 @@ const handleUpdateTaskName = async () => {
     emit('update:visible', false);
   } catch (error) {
     console.error('Ошибка при изменении имени задачи:', error);
-    // Уведомление об ошибке
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
