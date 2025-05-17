@@ -91,7 +91,7 @@ export const useTasksStore = defineStore('tasks', () => {
             const response = await axios.get<typeTask>(
                 `${getApiUrl()}tasks/read/${taskId}`
             );
-            currentTask.value = response.data;
+            currentTask.value = response.data as typeTask;
             console.log(`Fetched task ${taskId}`);
         } catch (err: unknown) {
             if (err instanceof AxiosError) {

@@ -1,13 +1,18 @@
 <!-- TaskDetailView.vue -->
 <script setup lang="ts">
-import {computed, ref} from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
 import { useOrdersStore } from '@/stores/storeOrders';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
 import Select from 'primevue/select';
+import InputText from 'primevue/inputtext';
+import { useToast } from 'primevue/usetoast';
+import Toast from 'primevue/toast';
 import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
+import Button from 'primevue/button';
+import { typeTask } from '@/types/typeTask.ts';
 
 interface Props {
   onClose?: () => void;
@@ -17,7 +22,7 @@ const props = defineProps<Props>();
 
 // Store для задач
 const tasksStore = useTasksStore();
-const currentTask = computed(() => tasksStore.currentTask);
+const currentTask = computed(() => tasksStore.currentTask as typeTask | null);
 const isLoading = computed(() => tasksStore.isCurrentTaskLoading);
 
 // Store для заказов
@@ -26,6 +31,9 @@ const ordersStore = useOrdersStore();
 // Store темы
 const themeStore = useThemeStore();
 const currentTheme = computed(() => themeStore.theme);
+
+// Toast для уведомлений
+const toast = useToast();
 
 // Опции для статуса
 const statusOptions = [
@@ -39,25 +47,111 @@ const statusOptions = [
 const isStatusUpdated = ref(false); // Флаг для отслеживания изменения статуса
 const isStatusLoading = ref(false); // Флаг для индикатора загрузки статуса
 
+// Состояние для редактирования имени
+const taskName = ref<string>(currentTask.value?.name || '');
+const isNameLoading = ref(false);
+
+// Обновление имени задачи
+const updateTaskName = async (taskId: number, newName: string) => {
+  if (!newName.trim()) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Имя задачи не может быть пустым',
+      life: 5000,
+    });
+    taskName.value = currentTask.value?.name || '';
+    return;
+  }
+
+  if (newName.trim().length > 128) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Имя задачи не должно превышать 128 символов',
+      life: 5000,
+    });
+    taskName.value = currentTask.value?.name || '';
+    return;
+  }
+
+  isNameLoading.value = true;
+
+  try {
+    await tasksStore.updateTaskName(taskId, newName.trim());
+
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось обновить имя задачи #${taskId}`,
+        life: 5000,
+      });
+      taskName.value = currentTask.value?.name || '';
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: `Имя задачи #${taskId} обновлено`,
+        life: 3000,
+      });
+      isStatusUpdated.value = true;
+    }
+  } catch (err) {
+    console.error('Ошибка при обновлении имени задачи:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: `Не удалось обновить имя задачи #${taskId}`,
+      life: 5000,
+    });
+    taskName.value = currentTask.value?.name || '';
+  } finally {
+    isNameLoading.value = false;
+  }
+};
+
+// Синхронизация taskName с currentTask.name при изменении currentTask
+watch(currentTask, (newTask) => {
+  taskName.value = newTask?.name || '';
+});
+
 // Функция для обновления статуса задачи и заказа
 const updateStatus = async (taskId: number, statusId: number) => {
-  isSaving.value = true; // Блокируем кнопку
-  isStatusLoading.value = true; // Показываем индикатор загрузки
+  if (!currentTask.value) return; // Безопасная проверка
+  isSaving.value = true;
+  isStatusLoading.value = true;
 
   try {
     await tasksStore.updateTaskStatus(taskId, statusId);
 
     if (tasksStore.error) {
-      console.error('Error updating task status:', tasksStore.error);
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить статус задачи #${taskId}`,
+        life: 5000,
+      });
     } else {
-      console.log(`Status for task ${taskId} updated successfully`);
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: `Статус задачи #${taskId} успешно изменен`,
+        life: 3000,
+      });
       isStatusUpdated.value = true;
     }
   } catch (err) {
     console.error('Unexpected error during status update:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: `Не удалось изменить статус задачи #${taskId}`,
+      life: 5000,
+    });
   } finally {
-    isSaving.value = false; // Разблокируем кнопку независимо от результата
-    isStatusLoading.value = false; // Скрываем индикатор загрузки
+    isSaving.value = false;
+    isStatusLoading.value = false;
   }
 };
 
@@ -89,7 +183,7 @@ const formatDuration = (durationString: string | null): string => {
       if (days > 0) result += `${days} д. `;
       if (hours > 0 || days > 0) result += `${hours} ч. `;
       if (minutes > 0 || hours > 0 || days > 0) result += `${minutes} м. `;
-      return result === '' ? '0 м.' : result.trim();
+      return result.trim() || '0 м.';
     } catch (error) {
       console.error('Ошибка при парсинге длительности:', error);
       return 'Ошибка формата';
@@ -107,7 +201,7 @@ const formatDuration = (durationString: string | null): string => {
 // Определяем, просрочена ли задача
 const isOverdue = computed(() => {
   if (!currentTask.value?.deadline_moment) return false;
-  if (currentTask.value?.status_id === 4) return false;
+  if (currentTask.value.status_id === 4) return false;
   const deadline = new Date(currentTask.value.deadline_moment);
   const now = new Date();
   return deadline < now;
@@ -139,10 +233,10 @@ const closeForm = async () => {
   }
 
   // Сброс текущей задачи или скрытие модалки
-  tasksStore.clearCurrentTask(); // или hide modal и т.д.
-  isStatusUpdated.value = false; // Сбрасываем флаг
+  tasksStore.clearCurrentTask();
+  isStatusUpdated.value = false;
 
-  // Если onClose был передан как проп — вызываем его (для уведомления родителя)
+  // Если onClose был передан как проп — вызываем его
   if (props.onClose) {
     props.onClose();
   }
@@ -151,16 +245,40 @@ const closeForm = async () => {
 
 <template>
   <BaseModal
-      :name="currentTask?.name || 'Детали задачи'"
+      :name="currentTask ? `Задача #${currentTask.id}` : 'Детали задачи'"
       :onClose="props.onClose"
   >
+    <Toast />
+
     <!-- Индикатор загрузки -->
     <div v-if="isLoading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
     <!-- Содержимое при загруженных данных -->
-    <div v-else-if="currentTask" class="grid grid-cols-1 gap-4 mb-6">
+    <div v-if="currentTask" class="grid grid-cols-1 gap-4 mb-6">
+      <!-- Название -->
+      <div class="grid grid-cols-4 gap-4">
+        <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Название:</div>
+        <div class="col-span-3">
+          <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
+            <div class="relative">
+              <!-- Индикатор загрузки имени -->
+              <div v-if="isNameLoading" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+              <InputText
+                  v-model="taskName"
+                  class="w-full"
+                  :class="{ 'opacity-50': isNameLoading }"
+                  :disabled="isNameLoading"
+                  @blur="updateTaskName(currentTask.id, taskName)"
+                  placeholder="Введите название задачи"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Статус -->
       <div class="grid grid-cols-4 gap-4">
@@ -282,7 +400,6 @@ const closeForm = async () => {
     />
   </BaseModal>
 </template>
-
 
 <style scoped>
 .relative {

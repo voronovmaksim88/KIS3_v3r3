@@ -17,7 +17,7 @@ export interface typeTask {
     price: number | null;
     parent_task_id: number | null;
     root_task_id: number | null;
-    status: { id: number; name: string } | null;
+    // status: { id: number; name: string } | null;
     payment_status: { id: number; name: string } | null;
     executor: { uuid: string; name: string; surname: string } | null;
 }
