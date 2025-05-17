@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="container mx-auto p-4">
+  <div class="w-full p-4">
     <!-- Компонент Toast для уведомлений -->
     <Toast />
 
@@ -144,20 +144,21 @@ onBeforeUnmount(() => {
       {{ tasksStore.error }}
     </div>
 
-    <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" class="w-full">
+    <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)" >
       <table :class="tableBaseClass">
         <colgroup>
           <col style="width: 3%" />
-          <col style="width: 12%" />
+          <col style="width: 4%" />
+          <col style="width: 15%" />
           <col style="width: 20%" />
           <col style="width: 10%" />
-          <col style="width: 30%" />
+          <col style="width: 23%" />
           <col style="width: 20%" />
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
         <tr :class="thClasses">
-          <th colspan="6" :class="tableHeaderRowClass">
+          <th colspan="7" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
               <div class="card flex flex-wrap justify-left gap-4 font-medium">
                 <!-- Чекбокс все/активные -->
@@ -177,6 +178,7 @@ onBeforeUnmount(() => {
         <!-- Строка с заголовками таблицы -->
         <tr>
           <th :class="thClasses">id</th>
+          <th :class="thClasses">Заказ</th>
           <th :class="thClasses">Имя</th>
           <th :class="thClasses">Описание</th>
           <th :class="thClasses">Статус</th>
@@ -188,10 +190,19 @@ onBeforeUnmount(() => {
         <tbody>
         <template v-for="task in tasksStore.tasks" :key="task.id">
           <tr :class="trBaseClass">
+
+            <!-- id задачи -->
             <td :class="tdBaseTextClass">{{ task.id }}</td>
+
+            <!-- заказ к которому принадлежит задача -->
+            <td :class="tdBaseTextClass"> {{ task.order?.serial }}  </td>
+
+            <!-- Имя задачи -->
             <td :class="tdBaseTextClass">{{ task.name }}</td>
+
             <!-- Описание задачи -->
             <td :class="tdBaseTextClass">{{ task.description }}</td>
+
             <!-- Статус задачи -->
             <td class="px-4 py-2" :class="tdBaseTextClass">
               <div class="relative flex items-center">
@@ -218,7 +229,7 @@ onBeforeUnmount(() => {
                   <template #value="slotProps">
                       <span
                           v-if="slotProps.value"
-                          :style="{ color: getTaskStatusColor(slotProps.value, currentTheme) }"
+                          :style="{ color: getTaskStatusColor(slotProps.value) }"
                       >
                         {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                       </span>
@@ -226,7 +237,7 @@ onBeforeUnmount(() => {
                   </template>
                   <template #option="slotProps">
                     <div class="flex items-center">
-                        <span :style="{ color: getTaskStatusColor(slotProps.option.value, currentTheme) }">
+                        <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
                           {{ slotProps.option.label }}
                         </span>
                     </div>
@@ -234,6 +245,7 @@ onBeforeUnmount(() => {
                 </Select>
               </div>
             </td>
+
             <td :class="tdBaseTextClass"></td>
             <td :class="tdBaseTextClass"></td>
           </tr>

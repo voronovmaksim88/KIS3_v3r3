@@ -2,6 +2,7 @@
 // Интерфейс для задачи (основан на TaskRead из backend)
 export interface typeTask {
     id: number;
+    order: { serial: string; name: string } | null;
     name: string;
     description: string | null;
     status_id: number;
@@ -19,5 +20,4 @@ export interface typeTask {
     status: { id: number; name: string } | null;
     payment_status: { id: number; name: string } | null;
     executor: { uuid: string; name: string; surname: string } | null;
-    order: { serial: string; name: string } | null;
 }
