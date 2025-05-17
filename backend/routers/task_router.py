@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, Body
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
@@ -221,7 +221,7 @@ async def update_task_status(
 @router.patch("/update_name/{task_id}", response_model=TaskRead)
 async def update_task_name(
         task_id: int,
-        new_name: str = Body(..., description="New name for the task", min_length=1, max_length=128),
+        new_name: str = Query(..., description="New name for the task", min_length=1, max_length=128),
         session: AsyncSession = Depends(get_async_db)
 ):
     """
