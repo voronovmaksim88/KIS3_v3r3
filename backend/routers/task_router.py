@@ -217,7 +217,6 @@ async def update_task_status(
         )
 
 
-
 @router.patch("/update_name/{task_id}", response_model=TaskRead)
 async def update_task_name(
         task_id: int,
@@ -272,4 +271,64 @@ async def update_task_name(
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при обновлении имени задачи: {str(e)}"
+        )
+
+
+@router.patch("/update_description/{task_id}", response_model=TaskRead)
+async def update_task_description(
+        task_id: int,
+        new_description: Optional[str] = Query(
+            None,
+            description="New description for the task",
+            max_length=1024
+        ),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить описание задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - new_description: Новое описание задачи (строка, может быть null).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        logger.info(f"Received request to update task {task_id} with new description={new_description}")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Преобразуем пустую строку или пробелы в None
+        description_value = None if new_description is None or new_description.strip() == "" else new_description.strip()
+
+        # Обновляем описание задачи
+        update_query = update(Task).where(Task.id == task_id).values(description=description_value)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} description updated to {description_value}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating task description: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при обновлении описания задачи: {str(e)}"
         )
