@@ -52,61 +52,39 @@ const taskName = ref<string>(currentTask.value?.name || '');
 const isNameLoading = ref(false);
 
 // Обновление имени задачи
+const isUpdating = ref(false);
+
 const updateTaskName = async (taskId: number, newName: string) => {
+  if (isUpdating.value) return; // Предотвращаем повторный вызов
   if (!newName.trim()) {
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: 'Имя задачи не может быть пустым',
-      life: 5000,
-    });
+    toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Имя задачи не может быть пустым', life: 5000 });
     taskName.value = currentTask.value?.name || '';
     return;
   }
-
   if (newName.trim().length > 128) {
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: 'Имя задачи не должно превышать 128 символов',
-      life: 5000,
-    });
+    toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Имя задачи не должно превышать 128 символов', life: 5000 });
     taskName.value = currentTask.value?.name || '';
     return;
   }
 
+  isUpdating.value = true;
   isNameLoading.value = true;
 
   try {
     await tasksStore.updateTaskName(taskId, newName.trim());
-
     if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось обновить имя задачи #${taskId}`,
-        life: 5000,
-      });
+      toast.add({ severity: 'error', summary: 'Ошибка', detail: tasksStore.error || `Не удалось обновить имя задачи #${taskId}`, life: 5000 });
       taskName.value = currentTask.value?.name || '';
     } else {
-      toast.add({
-        severity: 'success',
-        summary: 'Успешно',
-        detail: `Имя задачи #${taskId} обновлено`,
-        life: 3000,
-      });
+      toast.add({ severity: 'success', summary: 'Успешно', detail: `Имя задачи #${taskId} обновлено`, life: 3000 });
       isStatusUpdated.value = true;
     }
   } catch (err) {
     console.error('Ошибка при обновлении имени задачи:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: `Не удалось обновить имя задачи #${taskId}`,
-      life: 5000,
-    });
+    toast.add({ severity: 'error', summary: 'Ошибка', detail: `Не удалось обновить имя задачи #${taskId}`, life: 5000 });
     taskName.value = currentTask.value?.name || '';
   } finally {
+    isUpdating.value = false;
     isNameLoading.value = false;
   }
 };
@@ -272,8 +250,8 @@ const closeForm = async () => {
                   class="w-full"
                   :class="{ 'opacity-50': isNameLoading }"
                   :disabled="isNameLoading"
-                  @blur="updateTaskName(currentTask.id, taskName)"
                   placeholder="Введите название задачи"
+                  @blur="updateTaskName(currentTask.id, taskName)"
                   @keyup.enter="updateTaskName(currentTask.id, taskName)"
               />
             </div>
