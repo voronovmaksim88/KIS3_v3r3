@@ -1130,7 +1130,7 @@ watch(
             </td>
           </tr>
 
-
+          <!--подробная информация об одном заказе-->
           <tr
               v-if="expandedOrderSerial === order.serial"
               :class="[ currentTheme === 'dark' ? 'border-b border-gray-600' : 'border-b border-gray-200' ]"

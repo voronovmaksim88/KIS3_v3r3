@@ -50,7 +50,6 @@ export const useOrdersStore = defineStore('orders', () => {
     };
 
     // === Действия (Actions) ===
-
     const clearError = () => {
         error.value = null;
     };
@@ -215,17 +214,6 @@ export const useOrdersStore = defineStore('orders', () => {
             loading.value = false;
         }
     };
-
-
-    // --- Действия связанные с состоянием UI (Сортировка, Сброс) ---
-
-    // setSortField удален, логика перенесена в storeOrdersTable.ts
-    // Компонент должен вызвать storeOrdersTable.setSort()
-    // а затем ordersStore.fetchOrders()
-
-    // resetSorting удален, логика перенесена в storeOrdersTable.ts
-    // Компонент должен вызвать storeOrdersTable.resetTableState()
-    // или storeOrdersTable.setSort('serial') и storeOrdersTable.setSkip(0)
 
     const resetOrderDetail = () => {
         currentOrderDetail.value = null;
