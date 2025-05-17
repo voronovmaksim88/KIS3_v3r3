@@ -11,6 +11,7 @@ import Toast from 'primevue/toast';
 import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
 import { typeTask } from '@/types/typeTask.ts';
+import Textarea from 'primevue/textarea';
 
 interface Props {
   onClose?: () => void;
@@ -48,6 +49,10 @@ const isNameLoading = ref(false);
 
 // Обновление имени задачи
 const isUpdating = ref(false);
+
+// Состояние для редактирования описания
+const taskDescription = ref<string | null>(currentTask.value?.description || null);
+const isDescriptionLoading = ref(false);
 
 const updateTaskName = async (taskId: number, newName: string) => {
   if (isUpdating.value) return; // Предотвращаем повторный вызов
@@ -127,6 +132,45 @@ const updateStatus = async (taskId: number, statusId: number) => {
     isStatusLoading.value = false;
   }
 };
+
+// Обновление описания задачи
+const updateTaskDescription = async (taskId: number, newDescription: string | null) => {
+  if (isUpdating.value) return; // Предотвращаем повторный вызов
+  if (newDescription && newDescription.length > 1024) {
+    toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Описание задачи не должно превышать 1024 символа', life: 5000 });
+    taskDescription.value = currentTask.value?.description || null;
+    return;
+  }
+  if ((newDescription?.trim() || null) === (currentTask.value?.description?.trim() || null)) {
+    return; // Не отправляем запрос, если описание не изменилось
+  }
+
+  isUpdating.value = true;
+  isDescriptionLoading.value = true;
+
+  try {
+    await tasksStore.updateTaskDescription(taskId, newDescription?.trim() || null);
+    if (tasksStore.error) {
+      toast.add({ severity: 'error', summary: 'Ошибка', detail: tasksStore.error || `Не удалось обновить описание задачи #${taskId}`, life: 5000 });
+      taskDescription.value = currentTask.value?.description || null;
+    } else {
+      toast.add({ severity: 'success', summary: 'Успешно', detail: `Описание задачи #${taskId} обновлено`, life: 3000 });
+      isStatusUpdated.value = true;
+    }
+  } catch (err) {
+    console.error('Ошибка при обновлении описания задачи:', err);
+    toast.add({ severity: 'error', summary: 'Ошибка', detail: `Не удалось обновить описание задачи #${taskId}`, life: 5000 });
+    taskDescription.value = currentTask.value?.description || null;
+  } finally {
+    isUpdating.value = false;
+    isDescriptionLoading.value = false;
+  }
+};
+
+// Синхронизация taskDescription с currentTask.description при изменении currentTask
+watch(currentTask, (newTask) => {
+  taskDescription.value = newTask?.description || null;
+});
 
 // Для форматирования дат
 const formatDateTime = (dateString: string | null): string => {
@@ -213,7 +257,7 @@ const isSaving = ref(false); // Флаг для блокировки кнопк�
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Название:</div>
         <div class="col-span-3">
-          <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
+          <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
               <!-- Индикатор загрузки имени -->
               <div v-if="isNameLoading" class="absolute inset-0 flex items-center justify-center z-10">
@@ -237,7 +281,7 @@ const isSaving = ref(false); // Флаг для блокировки кнопк�
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Статус:</div>
         <div class="col-span-3">
-          <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
+          <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
               <!-- Индикатор загрузки статуса -->
               <div v-if="isStatusLoading" class="absolute inset-0 flex items-center justify-center z-10">
@@ -285,9 +329,24 @@ const isSaving = ref(false); // Флаг для блокировки кнопк�
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Описание:</div>
         <div class="col-span-3">
-          <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
-            <p v-if="currentTask.description">{{ currentTask.description }}</p>
-            <p v-else :class="currentTheme === 'dark' ? 'text-gray-400 italic' : 'text-gray-500 italic'">Описание отсутствует</p>
+          <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
+            <div class="relative">
+              <!-- Индикатор загрузки описания -->
+              <div v-if="isDescriptionLoading" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+              <Textarea
+                  v-model="taskDescription"
+                  class="w-full"
+                  :class="{ 'opacity-50': isDescriptionLoading }"
+                  :disabled="isDescriptionLoading"
+                  placeholder="Введите описание задачи"
+                  rows="5"
+                  autoResize
+                  @blur="updateTaskDescription(currentTask.id, taskDescription)"
+                  @keyup.ctrl.enter="updateTaskDescription(currentTask.id, taskDescription)"
+              />
+            </div>
           </div>
         </div>
       </div>
