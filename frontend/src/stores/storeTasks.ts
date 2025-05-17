@@ -214,6 +214,24 @@ export const useTasksStore = defineStore('tasks', () => {
         );
     }
 
+
+    // Метод для обновления описания задачи
+    async function updateTaskDescription(taskId: number, newDescription: string | null): Promise<void> {
+        if (newDescription && newDescription.length > 1024) {
+            error.value = 'Описание задачи не должно превышать 1024 символа';
+            return;
+        }
+
+        await patchTask(
+            taskId,
+            `update_description/${taskId}`,
+            {},
+            { new_description: newDescription },
+            `Описание задачи успешно обновлено`
+        );
+    }
+
+
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;
@@ -258,6 +276,7 @@ export const useTasksStore = defineStore('tasks', () => {
         fetchTaskById,
         updateTaskStatus,
         updateTaskName,
+        updateTaskDescription,
         updatePagination,
         updateFilters,
         resetFilters,
