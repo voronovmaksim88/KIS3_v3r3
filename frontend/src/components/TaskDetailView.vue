@@ -368,10 +368,9 @@ const closeForm = async () => {
     </div>
 
     <!-- Сообщение об ошибке -->
-    <div v-else class="text-center py-8 text-red-500">
+    <div v-else-if="!isLoading && !currentTask" class="text-center py-8 text-red-500">
       Не удалось загрузить данные задачи
     </div>
-
     <Button
         label="Закрыть"
         @click="closeForm"
