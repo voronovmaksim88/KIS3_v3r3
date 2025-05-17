@@ -18,12 +18,9 @@ import {useWorksStore} from "@/stores/storeWorks";
 
 // мои компоненты
 import OrderCreateForm from '@/components/OrderCreateForm.vue';
-import OrderCommentBlock from '@/components/OrderCommentBlock.vue';
-import TaskList from "@/components/TaskList.vue";
-import OrderFinanceBlock from '@/components/OrderFinanceBlock.vue';
-import OrderDateBlock from '@/components/OrderDateBlock.vue';
 import OrderNameEditDialog from '@/components/OrderNameEditDialog.vue';
 import OrderWorksEditDialog from '@/components/OrderWorksEditDialog.vue';
+import OrderDetails from "@/components/OrderDetails.vue";
 
 // primevue компоненты
 import Toast from 'primevue/toast'
@@ -33,6 +30,7 @@ import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 import {Checkbox} from "primevue";
 import MultiSelect from 'primevue/multiselect';
+
 
 // композитные компоненты
 const {
@@ -1131,58 +1129,17 @@ watch(
           </tr>
 
           <!--подробная информация об одном заказе-->
-          <tr
+          <OrderDetails
               v-if="expandedOrderSerial === order.serial"
-              :class="[ currentTheme === 'dark' ? 'border-b border-gray-600' : 'border-b border-gray-200' ]"
-          >
-            <td colspan="6" :class="detailsContainerClass" style="position: relative;">
-
-              <div v-if="isDetailLoading" class="absolute inset-0 flex justify-center items-center z-10">
-                <div class="absolute inset-0 backdrop-blur-sm"
-                     :class="currentTheme === 'dark' ? 'bg-gray-900 bg-opacity-40' : 'bg-white bg-opacity-50'">
-                </div>
-                <div class="z-20 px-4 py-2 rounded-lg shadow-lg flex items-center"
-                     :class="currentTheme === 'dark' ? 'bg-gray-800' : 'bg-white'">
-                  <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-                  <span :class="currentTheme === 'dark' ? 'text-white' : 'text-gray-800'">
-                    Загрузка данных заказа...
-                  </span>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                <OrderCommentBlock
-                    :order_serial="order.serial"
-                    :comments="currentOrderDetail?.comments || []"
-                    :theme="currentTheme"
-                />
-                <div class="flex flex-col gap-4">
-                  <OrderDateBlock
-                      :order="currentOrderDetail || {}"
-                      :theme="currentTheme"
-                      :detailBlockClass="detailBlockClass"
-                      :detailHeaderClass="detailHeaderClass"
-                      :tdBaseTextClass="tdBaseTextClass"
-                      :order-serial="order.serial"
-                  />
-                  <OrderFinanceBlock
-                      :finance="currentOrderDetail || {}"
-                      :theme="currentTheme"
-                      :detailBlockClass="detailBlockClass"
-                      :detailHeaderClass="detailHeaderClass"
-                      :tdBaseTextClass="tdBaseTextClass"
-                      :order-serial="order.serial"
-                  />
-                </div>
-                <TaskList
-                    :tasks="currentOrderDetail?.tasks || []"
-                    :theme="currentTheme"
-                    :order-serial="order.serial"
-                />
-              </div>
-            </td>
-          </tr>
+              :order-serial="order.serial"
+              :order-detail="currentOrderDetail"
+              :is-detail-loading="isDetailLoading"
+              :theme="currentTheme"
+              :details-container-class="detailsContainerClass"
+              :detail-block-class="detailBlockClass"
+              :detail-header-class="detailHeaderClass"
+              :td-base-text-class="tdBaseTextClass"
+          />
         </template>
 
         <tr v-if="orders.length === 0 && !isLoading && !error">
@@ -1257,17 +1214,4 @@ watch(
 :deep(.p-dialog-content) {
   padding: 0;
 }
-
-/* Поддержка backdrop-blur для браузеров */
-.backdrop-blur-sm {
-  background-color: rgba(0, 0, 0, 0.4); /* Fallback */
-}
-
-@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
-  .backdrop-blur-sm {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-}
-
 </style>
