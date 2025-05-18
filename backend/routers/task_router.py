@@ -6,6 +6,8 @@ from sqlalchemy.orm import selectinload
 from typing import Optional
 from uuid import UUID
 import logging
+from models import Person
+from fastapi import Body
 
 from database import get_async_db
 from models import Task
@@ -332,4 +334,67 @@ async def update_task_description(
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при обновлении описания задачи: {str(e)}"
+        )
+
+
+@router.patch("/{task_id}/executor", response_model=TaskRead)
+async def update_task_executor(
+        task_id: int,
+        executor_uuid: Optional[UUID] = Body(None, description="New executor UUID for the task"),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить исполнителя задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - executor_uuid: Новый UUID исполнителя (может быть null для удаления исполнителя).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        # Логируем входные параметры
+        logger.info(f"Received request to update task {task_id} with executor_uuid={executor_uuid}")
+
+        # Проверяем, существует ли указанный исполнитель, если UUID предоставлен
+        if executor_uuid is not None:
+            person_query = select(Person).where(Person.uuid.is_(executor_uuid))
+            person_result = await session.execute(person_query)
+            person = person_result.scalars().first()
+            if not person:
+                logger.warning(f"Person with uuid {executor_uuid} not found")
+                raise HTTPException(status_code=404, detail="Person not found")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Обновляем исполнителя задачи
+        update_query = update(Task).where(Task.id == task_id).values(executor_uuid=executor_uuid)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} executor updated to {executor_uuid}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating task executor: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при обновлении исполнителя задачи: {str(e)}"
         )
