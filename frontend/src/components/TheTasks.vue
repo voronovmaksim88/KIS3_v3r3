@@ -13,6 +13,7 @@ import {useToast} from 'primevue/usetoast';
 import {getOrderStatusColor, getTaskStatusColor} from '@/utils/getStatusColor.ts';
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
+import { formatFIO } from "@/utils/formatFIO.ts";
 
 
 // Композитные компоненты
@@ -219,8 +220,8 @@ onBeforeUnmount(() => {
           <col style="width: 15%"/>
           <col style="width: 20%"/>
           <col style="width: 10%"/>
-          <col style="width: 23%"/>
-          <col style="width: 20%"/>
+          <col style="width: 10%"/>
+          <col style="width: 33%"/>
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
@@ -339,7 +340,12 @@ onBeforeUnmount(() => {
               </div>
             </td>
 
-            <td :class="tdBaseTextClass"></td>
+            <!-- Исполнитель задачи -->
+            <td :class="tdBaseTextClass">
+              {{ formatFIO(task.executor) }}
+            </td>
+
+
             <td :class="tdBaseTextClass"></td>
           </tr>
           <tr></tr>
