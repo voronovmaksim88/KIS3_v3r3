@@ -4,6 +4,7 @@ import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {useTasksStore} from '../stores/storeTasks';
 import {useOrdersStore} from '../stores/storeOrders';
+import { usePeopleStore } from '../stores/storePeople';
 import {type TaskFilters} from '../stores/storeTasks';
 import {useThemeStore} from '../stores/storeTheme';
 import {useTableStyles} from '../composables/useTableStyles';
@@ -40,7 +41,25 @@ const tasksStore = useTasksStore();
 // Store заказов
 const ordersStore = useOrdersStore();
 
-// Local filters for two-way binding
+// Store людей
+const peopleStore = usePeopleStore();
+const { activeUsers } = storeToRefs(peopleStore); // Получаем активных пользователей
+
+// Опции для исполнителей
+const executorOptions = computed(() => {
+  return [
+    { value: null, label: 'Без исполнителя' },
+    ...activeUsers.value.map(user => ({
+      value: user.uuid,
+      label: formatFIO(user),
+    })),
+  ];
+});
+
+// Состояние загрузки для каждого исполнителя
+const loadingExecutors = ref<Record<number, boolean>>({});
+
+// Локальные фильтры для двусторонней привязки
 const localFilters = ref<TaskFilters>({
   status_id: null,
   order_serial: null,
@@ -188,6 +207,16 @@ onMounted(() => {
   if (!tasksStore.tasks.length && !tasksStore.isLoading) {
     tasksStore.updatePagination(skip.value, rowsPerPage.value);
   }
+  // Загружаем активных пользователей
+  peopleStore.fetchActiveUsers().catch(err => {
+    console.error('Error fetching active users:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось загрузить список активных пользователей',
+      life: 5000,
+    });
+  });
 });
 
 // Очистка задач при размонтировании компонента
@@ -355,9 +384,37 @@ onBeforeUnmount(() => {
               </div>
             </td>
 
-            <!-- Исполнитель задачи -->
-            <td :class="tdBaseTextClass">
-              {{ formatFIO(task.executor) }}
+            <!-- Выбор исполнителя -->
+            <td class="px-4 py-2" :class="tdBaseTextClass">
+              <div class="relative flex items-center">
+                <!-- Спиннер загрузки -->
+                <div
+                    v-if="loadingExecutors[task.id]"
+                    class="absolute inset-0 flex items-center justify-center"
+                >
+                  <div
+                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <!-- Селектор исполнителя -->
+                <Select
+                    :modelValue="task.executor?.uuid"
+                    :options="executorOptions"
+                    optionValue="value"
+                    optionLabel="label"
+                    placeholder="Выберите исполнителя"
+                    class="w-full"
+                    :class="{ 'opacity-50 pointer-events-none': loadingExecutors[task.id] }"
+                >
+                  <template #value="slotProps">
+                    <span v-if="slotProps.value">
+                      {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
+                        (task.executor ? formatFIO(task.executor) : 'Неизвестный исполнитель') }}
+                    </span>
+                    <span v-else>{{ slotProps.placeholder }}</span>
+                  </template>
+                </Select>
+              </div>
             </td>
 
 

@@ -5,6 +5,14 @@ import axios from 'axios';
 import { Person } from '../types/typePerson';
 import { getApiUrl } from '../utils/apiUrlHelper';
 
+// Тип для PersonSchema (соответствует backend-схеме)
+interface UserPerson {
+    uuid: string;
+    name: string;
+    surname: string;
+    patronymic?: string;
+}
+
 // Создайте тип для параметров фильтрации
 interface PeopleFilterParams {
     can_be_any?: boolean;
@@ -19,6 +27,7 @@ interface PeopleFilterParams {
 export const usePeopleStore = defineStore('people', () => {
     // Состояние
     const people = ref<Person[]>([]);
+    const activeUsers = ref<UserPerson[]>([]); // Новый массив для активных пользователей
     const error = ref('');
     const isLoading = ref(false);
 
@@ -30,14 +39,23 @@ export const usePeopleStore = defineStore('people', () => {
         );
     });
 
+    // Новый геттер для сортировки активных пользователей
+    const sortedActiveUsers = computed(() => {
+        return [...activeUsers.value].sort((a, b) =>
+            a.surname > b.surname ? 1 : a.surname === b.surname ?
+                (a.name > b.name ? 1 : -1) : -1
+        );
+    });
+
     // Полное имя для отображения (Фамилия И. О.)
-    const getFormattedName = (person: Person) => {
-        return `${person.surname} ${person.name[0]}.${person.patronymic[0]}.`;
+    const getFormattedName = (person: Person | UserPerson) => {
+        return `${person.surname} ${person.name[0]}.${person.patronymic ? person.patronymic[0] + '.' : ''}`;
     };
 
     // Методы
     function clearStore() {
         people.value = [];
+        activeUsers.value = []; // Очистка активных пользователей
         error.value = '';
         isLoading.value = false;
     }
@@ -75,7 +93,6 @@ export const usePeopleStore = defineStore('people', () => {
             isLoading.value = false;
         }
     }
-
 
     async function fetchPeople(filters: PeopleFilterParams = {}) {
         clearError();
@@ -118,6 +135,33 @@ export const usePeopleStore = defineStore('people', () => {
         }
     }
 
+    // Новая функция для получения активных пользователей
+    async function fetchActiveUsers() {
+        clearError();
+        isLoading.value = true;
+
+        try {
+            const response = await axios.get<UserPerson[]>(
+                `${getApiUrl()}person/users/active`,
+                { withCredentials: true }
+            );
+
+            activeUsers.value = response.data;
+            return response.data;
+        } catch (e) {
+            if (axios.isAxiosError(e)) {
+                console.error('Error fetching active users:', e.response?.data || e.message);
+                setError(e.response?.data?.detail || 'Error fetching active users');
+            } else {
+                console.error('Unexpected error:', e);
+                setError('Unknown error occurred');
+            }
+            return null;
+        } finally {
+            isLoading.value = false;
+        }
+    }
+
     // Удобные предустановленные фильтры для частых сценариев
     async function fetchActivePeople() {
         return fetchPeople({ active: true });
@@ -139,197 +183,221 @@ export const usePeopleStore = defineStore('people', () => {
         return fetchPeople({ can_be_tester: true });
     }
 
-    async function fetchAnySpecialists() {
-        return fetchPeople({ can_be_any: true });
-    }
-
-    // Функция для фильтрации по компании
-    async function fetchPeopleByCounterparty(counterpartyId: number) {
-        return fetchPeople({ counterparty_id: counterpartyId });
-    }
-
-    // Функция для комбинированной фильтрации (по роли и активности)
-    async function fetchActiveSpecialists(specialistType: 'developer' | 'assembler' | 'programmer' | 'tester' | 'any') {
-        const filters: PeopleFilterParams = { active: true };
-
-        switch (specialistType) {
-            case 'developer':
-                filters.can_be_scheme_developer = true;
-                break;
-            case 'assembler':
-                filters.can_be_assembler = true;
-                break;
-            case 'programmer':
-                filters.can_be_programmer = true;
-                break;
-            case 'tester':
-                filters.can_be_tester = true;
-                break;
-            case 'any':
-                filters.can_be_any = true;
-                break;
+        async function fetchAnySpecialists() {
+            return fetchPeople({ can_be_any: true });
         }
 
-        return fetchPeople(filters);
-    }
-
-
-    async function addPerson(
-        name: string,
-        surname: string,
-        patronymic: string
-    ) {
-        clearError();
-
-        // Валидация входных данных
-        if (!name.trim() || !surname.trim() || !patronymic.trim()) {
-            setError('All fields are required (name, surname, patronymic)');
-            return null;
+        // Функция для фильтрации по компании
+        async function fetchPeopleByCounterparty(counterpartyId: number) {
+            return fetchPeople({ counterparty_id: counterpartyId });
         }
 
-        try {
-            const response = await axios.post(
-                `${getApiUrl()}/people/create/`,
-                {
-                    name: name.trim(),
-                    surname: surname.trim(),
-                    patronymic: patronymic.trim()
-                },
-                { withCredentials: true }
+        // Функция для комбинированной фильтрации (по роли и активности)
+        async function fetchActiveSpecialists(specialistType: 'developer' | 'assembler' | 'programmer' | 'tester' | 'any') {
+            const filters: PeopleFilterParams = { active: true };
+
+            switch (specialistType) {
+                case 'developer':
+                    filters.can_be_scheme_developer = true;
+                    break;
+                case 'assembler':
+                    filters.can_be_assembler = true;
+                    break;
+                case 'programmer':
+                    filters.can_be_programmer = true;
+                    break;
+                case 'tester':
+                    filters.can_be_tester = true;
+                    break;
+                case 'any':
+                    filters.can_be_any = true;
+                    break;
+            }
+
+            return fetchPeople(filters);
+        }
+
+        async function addPerson(
+            name: string,
+            surname: string,
+            patronymic: string
+        ) {
+            clearError();
+
+            // Валидация входных данных
+            if (!name.trim() || !surname.trim() || !patronymic.trim()) {
+                setError('All fields are required (name, surname, patronymic)');
+                return null;
+            }
+
+            try {
+                const response = await axios.post(
+                    `${getApiUrl()}/people/create/`,
+                    {
+                        name: name.trim(),
+                        surname: surname.trim(),
+                        patronymic: patronymic.trim()
+                    },
+                    { withCredentials: true }
+                );
+
+                // Обновляем список людей после успешного добавления
+                await fetchAllPeople();
+
+                return response.data;
+            } catch (e) {
+                if (axios.isAxiosError(e)) {
+                    console.error('Error creating person:', e.response?.data || e.message);
+                    setError(e.response?.data?.detail || 'Error creating person');
+                } else {
+                    console.error('Unexpected error:', e);
+                    setError('Unknown error occurred');
+                }
+                return null;
+            }
+        }
+
+        async function updatePerson(
+            uuid: string,
+            name: string,
+            surname: string,
+            patronymic: string
+        ) {
+            clearError();
+
+            // Валидация входных данных
+            if (!name.trim() || !surname.trim() || !patronymic.trim()) {
+                setError('All fields are required (name, surname, patronymic)');
+                return null;
+            }
+
+            try {
+                const response = await axios.put(
+                    `${getApiUrl()}/people/update/${uuid}`,
+                    {
+                        name: name.trim(),
+                        surname: surname.trim(),
+                        patronymic: patronymic.trim()
+                    },
+                    { withCredentials: true }
+                );
+
+                // Обновляем конкретного человека в списке
+                const index = people.value.findIndex(person => person.uuid === uuid);
+                if (index !== -1) {
+                    people.value[index] = response.data;
+                }
+
+                return response.data;
+            } catch (e) {
+                if (axios.isAxiosError(e)) {
+                    console.error('Error updating person:', e.response?.data || e.message);
+                    setError(e.response?.data?.detail || 'Error updating person');
+                } else {
+                    console.error('Unexpected error:', e);
+                    setError('Unknown error occurred');
+                }
+                return null;
+            }
+        }
+
+        async function deletePerson(apiUrl: string, uuid: string) {
+            clearError();
+
+            try {
+                await axios.delete(
+                    `${apiUrl}/people/delete/${uuid}`,
+                    { withCredentials: true }
+                );
+
+                // Удаляем человека из списка
+                people.value = people.value.filter(person => person.uuid !== uuid);
+                activeUsers.value = activeUsers.value.filter(user => user.uuid !== uuid); // Удаляем из активных пользователей
+
+                return true;
+            } catch (e) {
+                if (axios.isAxiosError(e)) {
+                    console.error('Error deleting person:', e.response?.data || e.message);
+                    setError(e.response?.data?.detail || 'Error deleting person');
+                } else {
+                    console.error('Unexpected error:', e);
+                    setError('Unknown error occurred');
+                }
+                return false;
+            }
+        }
+
+        // Функция для получения человека по uuid
+        function getPersonByUuid(uuid: string): Person | undefined {
+            return people.value.find(person => person.uuid === uuid);
+        }
+
+        // Функция для получения активного пользователя по uuid
+        function getActiveUserByUuid(uuid: string): UserPerson | undefined {
+            return activeUsers.value.find(user => user.uuid === uuid);
+        }
+
+        // Функция для поиска людей
+        function searchPeople(query: string): Person[] {
+            if (!query.trim()) return people.value;
+
+            const lowercaseQuery = query.toLowerCase().trim();
+            return people.value.filter(person =>
+                person.surname.toLowerCase().includes(lowercaseQuery) ||
+                person.name.toLowerCase().includes(lowercaseQuery) ||
+                person.patronymic.toLowerCase().includes(lowercaseQuery)
             );
-
-            // Обновляем список людей после успешного добавления
-            await fetchAllPeople();
-
-            return response.data;
-        } catch (e) {
-            if (axios.isAxiosError(e)) {
-                console.error('Error creating person:', e.response?.data || e.message);
-                setError(e.response?.data?.detail || 'Error creating person');
-            } else {
-                console.error('Unexpected error:', e);
-                setError('Unknown error occurred');
-            }
-            return null;
-        }
-    }
-
-    async function updatePerson(
-        uuid: string,
-        name: string,
-        surname: string,
-        patronymic: string
-    ) {
-        clearError();
-
-        // Валидация входных данных
-        if (!name.trim() || !surname.trim() || !patronymic.trim()) {
-            setError('All fields are required (name, surname, patronymic)');
-            return null;
         }
 
-        try {
-            const response = await axios.put(
-                `${getApiUrl()}/people/update/${uuid}`,
-                {
-                    name: name.trim(),
-                    surname: surname.trim(),
-                    patronymic: patronymic.trim()
-                },
-                { withCredentials: true }
+        // Функция для поиска активных пользователей
+        function searchActiveUsers(query: string): UserPerson[] {
+            if (!query.trim()) return activeUsers.value;
+
+            const lowercaseQuery = query.toLowerCase().trim();
+            return activeUsers.value.filter(user =>
+                user.surname.toLowerCase().includes(lowercaseQuery) ||
+                user.name.toLowerCase().includes(lowercaseQuery) ||
+                (user.patronymic && user.patronymic.toLowerCase().includes(lowercaseQuery))
             );
-
-            // Обновляем конкретного человека в списке
-            const index = people.value.findIndex(person => person.uuid === uuid);
-            if (index !== -1) {
-                people.value[index] = response.data;
-            }
-
-            return response.data;
-        } catch (e) {
-            if (axios.isAxiosError(e)) {
-                console.error('Error updating person:', e.response?.data || e.message);
-                setError(e.response?.data?.detail || 'Error updating person');
-            } else {
-                console.error('Unexpected error:', e);
-                setError('Unknown error occurred');
-            }
-            return null;
         }
-    }
 
-    async function deletePerson(apiUrl: string, uuid: string) {
-        clearError();
+        const peopleCount = computed(() => people.value.length);
+        const activeUsersCount = computed(() => activeUsers.value.length);
 
-        try {
-            await axios.delete(
-                `${apiUrl}/people/delete/${uuid}`,
-                { withCredentials: true }
-            );
+        return {
+            // Состояние
+            people,
+            activeUsers, // Новый массив
+            error,
+            isLoading,
 
-            // Удаляем человека из списка
-            people.value = people.value.filter(person => person.uuid !== uuid);
+            // Геттеры
+            sortedPeople,
+            sortedActiveUsers, // Новый геттер
+            getFormattedName,
+            peopleCount,
+            activeUsersCount, // Новый геттер
 
-            return true;
-        } catch (e) {
-            if (axios.isAxiosError(e)) {
-                console.error('Error deleting person:', e.response?.data || e.message);
-                setError(e.response?.data?.detail || 'Error deleting person');
-            } else {
-                console.error('Unexpected error:', e);
-                setError('Unknown error occurred');
-            }
-            return false;
-        }
-    }
-
-    // Функция для получения человека по uuid
-    function getPersonByUuid(uuid: string): Person | undefined {
-        return people.value.find(person => person.uuid === uuid);
-    }
-
-    // Функция для поиска людей
-    function searchPeople(query: string): Person[] {
-        if (!query.trim()) return people.value;
-
-        const lowercaseQuery = query.toLowerCase().trim();
-        return people.value.filter(person =>
-            person.surname.toLowerCase().includes(lowercaseQuery) ||
-            person.name.toLowerCase().includes(lowercaseQuery) ||
-            person.patronymic.toLowerCase().includes(lowercaseQuery)
-        );
-    }
-
-    const peopleCount = computed(() => people.value.length);
-
-    return {
-        // Состояние
-        people,
-        error,
-        isLoading,
-
-        // Геттеры
-        sortedPeople,
-        getFormattedName,
-        peopleCount,
-
-        // Методы
-        clearStore,
-        clearError,
-        fetchPeople,         // Основная функция фильтрации
-        fetchAllPeople,      // Переименованная исходная функция
-        fetchActivePeople,   // Новые удобные функции
-        fetchDevelopers,
-        fetchAssemblers,
-        fetchProgrammers,
-        fetchTesters,
-        fetchAnySpecialists,
-        fetchPeopleByCounterparty,
-        fetchActiveSpecialists,
-        addPerson,
-        updatePerson,
-        deletePerson,
-        getPersonByUuid,
-        searchPeople,
-    };
-});
+            // Методы
+            clearStore,
+            clearError,
+            fetchPeople,
+            fetchAllPeople,
+            fetchActivePeople,
+            fetchDevelopers,
+            fetchAssemblers,
+            fetchProgrammers,
+            fetchTesters,
+            fetchAnySpecialists,
+            fetchPeopleByCounterparty,
+            fetchActiveSpecialists,
+            fetchActiveUsers, // Новая функция
+            addPerson,
+            updatePerson,
+            deletePerson,
+            getPersonByUuid,
+            getActiveUserByUuid, // Новая функция
+            searchPeople,
+            searchActiveUsers, // Новая функция
+        };
+    });
