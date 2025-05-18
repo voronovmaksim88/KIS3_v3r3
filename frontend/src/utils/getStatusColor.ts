@@ -1,5 +1,6 @@
 // utils/getStatusColor.ts
-export function getOrderStatusColor(statusId: number, theme: 'light' | 'dark' = 'light') {
+export function getOrderStatusColor(statusId: number | null, theme: 'light' | 'dark' = 'light') {
+    if (statusId === null) return '#64748B'; // Цвет по умолчанию для null
     if (statusId === 1) return '#FACC15'; // Не определён
     if (statusId === 2) return '#60A5FA'; // На согласовании
     if (statusId === 3) return '#34D399'; // В работе

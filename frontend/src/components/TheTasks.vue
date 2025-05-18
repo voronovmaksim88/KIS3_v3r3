@@ -10,7 +10,7 @@ import {useTableStyles} from '../composables/useTableStyles';
 import Select from 'primevue/select';
 import Toast from 'primevue/toast';
 import {useToast} from 'primevue/usetoast';
-import {getTaskStatusColor} from '@/utils/getStatusColor.ts';
+import {getOrderStatusColor, getTaskStatusColor} from '@/utils/getStatusColor.ts';
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
 
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Имя</th>
           <th :class="thClasses">Описание</th>
           <th :class="thClasses">Статус</th>
-          <th :class="thClasses">Статус оплаты</th>
+          <th :class="thClasses">Исполнитель</th>
           <th :class="thClasses"></th>
         </tr>
         </thead>
@@ -261,8 +261,17 @@ onBeforeUnmount(() => {
             <!-- id задачи -->
             <td :class="tdBaseTextClass">{{ task.id }}</td>
 
-            <!-- заказ к которому принадлежит задача -->
-            <td :class="tdBaseTextClass"> {{ task.order?.serial }}</td>
+            <!-- номер заказа -->
+            <td
+                class="px-4 py-2 cursor-pointer transition duration-300"
+                :class="[
+                    tdBaseTextClass,
+                    { 'font-bold': task.order && [1, 2, 3, 4, 8].includes(task.order.status_id) }
+                ]"
+                :style="{ color: getOrderStatusColor(task.order?.status_id ?? null, currentTheme) }"
+            >
+              {{ task.order?.serial }}
+            </td>
 
             <!-- Имя задачи -->
             <td

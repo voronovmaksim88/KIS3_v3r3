@@ -977,13 +977,14 @@ watch(
             </div>
           </th>
         </tr>
-
-
         </thead>
+
+
         <tbody>
         <template v-for="order in orders" :key="order.serial">
           <tr :class="trBaseClass">
 
+            <!-- номер заказа -->
             <td
                 class="px-4 py-2 cursor-pointer transition duration-300"
                 :class="[
