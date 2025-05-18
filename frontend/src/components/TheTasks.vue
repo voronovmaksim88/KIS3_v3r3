@@ -14,6 +14,8 @@ import {getOrderStatusColor, getTaskStatusColor} from '@/utils/getStatusColor.ts
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
 import { formatFIO } from "@/utils/formatFIO.ts";
+import Paginator from 'primevue/paginator';
+import { computed } from 'vue';
 
 
 // Композитные компоненты
@@ -57,7 +59,19 @@ const loadingStatuses = ref<Record<number, boolean>>({});
 const showDescriptionEditDialog = ref(false);
 const selectedTaskDescription = ref<string | null>(null);
 
-// Watch for store filter changes to sync with local filters
+// Состояние пагинации
+const currentPage = ref(0); // Текущая страница (0-based для вычислений)
+const rowsPerPage = ref(10); // Количество строк на странице
+
+// Вычисляем skip на основе текущей страницы и строк на странице
+const skip = computed(() => currentPage.value * rowsPerPage.value);
+
+// Синхронизация пагинации с хранилищем
+watch([currentPage, rowsPerPage], () => {
+  tasksStore.updatePagination(skip.value, rowsPerPage.value);
+});
+
+// Watch за изменениями фильтров магазина для синхронизации с локальными фильтрами
 watch(
     () => tasksStore.filters,
     (newFilters) => {
@@ -172,7 +186,7 @@ const handleDescriptionEditCancel = () => {
 // Выполняется при монтировании компонента
 onMounted(() => {
   if (!tasksStore.tasks.length && !tasksStore.isLoading) {
-    tasksStore.fetchTasks();
+    tasksStore.updatePagination(skip.value, rowsPerPage.value);
   }
 });
 
@@ -239,6 +253,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <span class="flex"></span>
+
             </div>
           </th>
         </tr>
@@ -362,6 +377,25 @@ onBeforeUnmount(() => {
         </tr>
         </tbody>
       </table>
+
+      <div class="mt-4 flex justify-center">
+        <Paginator
+            :rows="rowsPerPage"
+            :totalRecords="tasksStore.total"
+            :rowsPerPageOptions="[10, 20, 50]"
+            v-model:first="skip"
+            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            :class="[
+              'p-paginator',
+              currentTheme === 'light' ? 'bg-gray-100 text-gray-700' : 'bg-gray-700 text-gray-300'
+            ]"
+            @update:first="currentPage = Math.floor($event / rowsPerPage)"
+            @update:rows="rowsPerPage = $event"
+        />
+      </div>
+      <span class="text-sm font-medium" :class="currentTheme === 'light' ? 'text-gray-700' : 'text-gray-300'">
+        Всего задач: {{ tasksStore.total }}
+      </span>
     </div>
   </div>
 </template>
@@ -371,4 +405,5 @@ onBeforeUnmount(() => {
 .relative {
   position: relative;
 }
+
 </style>
