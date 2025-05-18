@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import List, Optional
 from uuid import UUID
-
 from database import get_async_db
 from models import Person
 from schemas.person_schem import PersonCanBe, PersonResponse
 from sqlalchemy.sql import and_
+from models import User
+from schemas.person_schem import PersonSchema
 
 router = APIRouter(
     prefix="/person",
@@ -107,3 +108,18 @@ async def get_person(
         raise HTTPException(status_code=404, detail="Person not found")
 
     return person
+
+@router.get("/users/active", response_model=List[PersonSchema])
+async def get_active_users(
+    session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Получить список активных пользователей с фильтром по Person.active=True.
+
+    Возвращает: список пользователей с полями uuid, name, surname, patronymic.
+    """
+    query = select(Person).join(User, User.id == Person.user_id).where(Person.active == True)
+    result = await session.execute(query)
+    people = result.scalars().all()
+
+    return people
