@@ -27,6 +27,7 @@ class TaskPaymentStatusSchema(BaseModel):
 class OrderSchema(BaseModel):
     serial: str
     name: str
+    status_id: int
 
     class Config:
         from_attributes = True
