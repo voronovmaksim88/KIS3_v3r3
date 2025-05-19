@@ -13,6 +13,7 @@ from database import get_async_db
 from models import Task
 from schemas.task_schem import PaginatedTaskResponse
 from schemas.task_schem import TaskRead
+from datetime import timedelta
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -359,7 +360,7 @@ async def update_task_executor(
 
         # Проверяем, существует ли указанный исполнитель, если UUID предоставлен
         if executor_uuid is not None:
-            person_query = select(Person).where(Person.uuid == executor_uuid) # type: ignore
+            person_query = select(Person).where(Person.uuid == executor_uuid)  # type: ignore
             person_result = await session.execute(person_query)
             person = person_result.scalars().first()
             if not person:
@@ -397,4 +398,74 @@ async def update_task_executor(
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при обновлении исполнителя задачи: {str(e)}"
+        )
+
+
+@router.patch("/{task_id}/planned_duration", response_model=TaskRead)
+async def update_task_planned_duration(
+        task_id: int,
+        new_planned_duration: Optional[str] = Body(
+            None,
+            description="New planned duration for the task in ISO 8601 format (e.g., P1D, P1DT2H30M)"
+        ),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить плановую длительность задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - new_planned_duration: Новая плановая длительность в формате ISO 8601 (может быть null).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        logger.info(f"Received request to update task {task_id} with new planned_duration={new_planned_duration}")
+
+        # Валидация и преобразование ISO 8601 в timedelta
+        duration_value = None
+        if new_planned_duration is not None and new_planned_duration.strip():
+            cleaned_duration = new_planned_duration.strip().strip('"\'')
+            try:
+                from isodate import parse_duration
+                duration = parse_duration(cleaned_duration)  # Парсим ISO 8601
+                # Преобразуем в timedelta
+                duration_value = duration if isinstance(duration, timedelta) else timedelta(
+                    seconds=duration.total_seconds())
+            except Exception:
+                logger.warning(f"Invalid ISO 8601 duration format: {cleaned_duration}")
+                raise HTTPException(status_code=400, detail="Invalid ISO 8601 duration format")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Обновляем плановую длительность задачи
+        update_query = update(Task).where(Task.id == task_id).values(planned_duration=duration_value)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} planned duration updated to {duration_value}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as _:
+        logger.error("Error updating task planned duration", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка при обновлении плановой длительности задачи"
         )
