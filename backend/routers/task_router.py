@@ -14,6 +14,7 @@ from models import Task
 from schemas.task_schem import PaginatedTaskResponse
 from schemas.task_schem import TaskRead
 from datetime import timedelta
+from isodate import parse_duration
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -428,7 +429,6 @@ async def update_task_planned_duration(
         if new_planned_duration is not None and new_planned_duration.strip():
             cleaned_duration = new_planned_duration.strip().strip('"\'')
             try:
-                from isodate import parse_duration
                 duration = parse_duration(cleaned_duration)  # Парсим ISO 8601
                 # Преобразуем в timedelta
                 duration_value = duration if isinstance(duration, timedelta) else timedelta(
