@@ -135,7 +135,7 @@ export const useTasksStore = defineStore('tasks', () => {
     async function patchTask(
         taskId: number,
         endpoint: string,
-        body: Record<string, any> = {},
+        body: Record<string, any> | string | null = {},
         params: Record<string, any> = {},
         successMessage: string
     ): Promise<void> {
@@ -232,6 +232,18 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
 
+    // Метод для обновления исполнителя задачи
+    async function updateTaskExecutor(taskId: number, executorUuid: string | null): Promise<void> {
+        await patchTask(
+            taskId,
+            `${taskId}/executor`,
+            executorUuid, // Отправляем executorUuid напрямую как строку или null
+            {},
+            `Исполнитель задачи успешно обновлён`
+        );
+    }
+
+
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;
@@ -281,5 +293,6 @@ export const useTasksStore = defineStore('tasks', () => {
         updateFilters,
         resetFilters,
         clearCurrentTask,
+        updateTaskExecutor
     };
 });
