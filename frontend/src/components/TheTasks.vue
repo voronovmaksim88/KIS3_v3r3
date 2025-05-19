@@ -1,23 +1,23 @@
 <!-- src/components/TheTasks.vue -->
 <script setup lang="ts">
-import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
-import {storeToRefs} from 'pinia';
-import {useTasksStore} from '../stores/storeTasks';
-import {useOrdersStore} from '../stores/storeOrders';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useTasksStore } from '../stores/storeTasks';
+import { useOrdersStore } from '../stores/storeOrders';
 import { usePeopleStore } from '../stores/storePeople';
-import {type TaskFilters} from '../stores/storeTasks';
-import {useThemeStore} from '../stores/storeTheme';
-import {useTableStyles} from '../composables/useTableStyles';
+import { type TaskFilters } from '../stores/storeTasks';
+import { useThemeStore } from '../stores/storeTheme';
+import { useTableStyles } from '../composables/useTableStyles';
 import Select from 'primevue/select';
 import Toast from 'primevue/toast';
-import {useToast} from 'primevue/usetoast';
-import {getOrderStatusColor, getTaskStatusColor} from '@/utils/getStatusColor.ts';
+import { useToast } from 'primevue/usetoast';
+import { getOrderStatusColor, getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
 import { formatFIO } from "@/utils/formatFIO.ts";
 import Paginator from 'primevue/paginator';
 import { computed } from 'vue';
-
+import InputText from 'primevue/inputtext';
 
 // Композитные компоненты
 const {
@@ -33,7 +33,7 @@ const toast = useToast();
 
 // Store темы
 const themeStore = useThemeStore();
-const {theme: currentTheme} = storeToRefs(themeStore);
+const { theme: currentTheme } = storeToRefs(themeStore);
 
 // Store задач
 const tasksStore = useTasksStore();
@@ -58,6 +58,9 @@ const executorOptions = computed(() => {
 
 // Состояние загрузки для каждого исполнителя
 const loadingExecutors = ref<Record<number, boolean>>({});
+
+// Состояние загрузки для каждого поля плановой длительности
+const loadingDurations = ref<Record<number, boolean>>({});
 
 // Локальные фильтры для двусторонней привязки
 const localFilters = ref<TaskFilters>({
@@ -94,18 +97,18 @@ watch([currentPage, rowsPerPage], () => {
 watch(
     () => tasksStore.filters,
     (newFilters) => {
-      localFilters.value = {...newFilters};
+      localFilters.value = { ...newFilters };
     },
-    {deep: true}
+    { deep: true }
 );
 
 // Опции для статуса
 const statusOptions = [
-  {value: 1, label: 'Не начата'},
-  {value: 2, label: 'В работе'},
-  {value: 3, label: 'На паузе'},
-  {value: 4, label: 'Завершена'},
-  {value: 5, label: 'Отменена'},
+  { value: 1, label: 'Не начата' },
+  { value: 2, label: 'В работе' },
+  { value: 3, label: 'На паузе' },
+  { value: 4, label: 'Завершена' },
+  { value: 5, label: 'Отменена' },
 ];
 
 // Функция для обновления статуса задачи
@@ -164,7 +167,6 @@ const updateStatus = async (taskId: number, statusId: number) => {
   }
 };
 
-
 // Функция для обновления исполнителя задачи
 const updateExecutor = async (taskId: number, executorUuid: string | null) => {
   try {
@@ -221,6 +223,61 @@ const updateExecutor = async (taskId: number, executorUuid: string | null) => {
   }
 };
 
+// Функция для обновления плановой длительности задачи
+const updatePlannedDuration = async (taskId: number, newDuration: string | null) => {
+  try {
+    // Устанавливаем флаг загрузки для длительности
+    loadingDurations.value[taskId] = true;
+
+    await tasksStore.updateTaskPlannedDuration(taskId, newDuration);
+
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить плановую длительность задачи #${taskId}`,
+        life: 5000,
+      });
+      return;
+    }
+
+    console.log(`Planned duration for task ${taskId} updated successfully`);
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Плановая длительность задачи #${taskId} успешно изменена`,
+      life: 3000,
+    });
+
+    // Проверяем, есть ли связанный заказ
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        console.error('Error updating order:', ordersStore.error);
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      } else {
+        console.log(`Order ${task.order.serial} details updated successfully`);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating task planned duration:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || `Не удалось изменить плановую длительность задачи #${taskId}`,
+      life: 5000,
+    });
+  } finally {
+    // Сбрасываем флаг загрузки
+    loadingDurations.value[taskId] = false;
+  }
+};
 
 // Обработчик клика на имя задачи для открытия диалога
 const openNameEditDialog = (taskId: number, taskName: string) => {
@@ -230,7 +287,7 @@ const openNameEditDialog = (taskId: number, taskName: string) => {
 };
 
 // Обработчик успешного обновления имени
-const handleNameUpdate = ({taskId, newName}: { taskId: number; newName: string }) => {
+const handleNameUpdate = ({ taskId, newName }: { taskId: number; newName: string }) => {
   console.log(`Task ${taskId} name updated to ${newName}`);
   showNameEditDialog.value = false;
 };
@@ -249,7 +306,7 @@ const openDescriptionEditDialog = (taskId: number, description: string | null) =
 };
 
 // Обработчик успешного обновления описания
-const handleDescriptionUpdate = ({taskId, newDescription}: { taskId: number; newDescription: string | null }) => {
+const handleDescriptionUpdate = ({ taskId, newDescription }: { taskId: number; newDescription: string | null }) => {
   console.log(`Task ${taskId} description updated to ${newDescription}`);
   showDescriptionEditDialog.value = false;
 };
@@ -279,7 +336,7 @@ onMounted(() => {
 
 // Очистка задач при размонтировании компонента
 onBeforeUnmount(() => {
-  tasksStore.$patch({tasks: []});
+  tasksStore.$patch({ tasks: [] });
 });
 </script>
 
@@ -302,7 +359,7 @@ onBeforeUnmount(() => {
 
   <div class="w-full p-4">
     <!-- Компонент Toast для уведомлений -->
-    <Toast/>
+    <Toast />
 
     <!-- Индикатор загрузки для всей таблицы -->
     <div v-if="tasksStore.isLoading && tasksStore.tasks.length === 0" class="w-full flex justify-center my-4">
@@ -316,18 +373,19 @@ onBeforeUnmount(() => {
     <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)">
       <table :class="tableBaseClass">
         <colgroup>
-          <col style="width: 3%"/>
-          <col style="width: 4%"/>
-          <col style="width: 15%"/>
-          <col style="width: 20%"/>
-          <col style="width: 10%"/>
-          <col style="width: 10%"/>
-          <col style="width: 33%"/>
+          <col style="width: 3%" />
+          <col style="width: 4%" />
+          <col style="width: 15%" />
+          <col style="width: 20%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" /> <!-- Новый столбец для плановой длительности -->
+          <col style="width: 23%" /> <!-- Уменьшенный пустой столбец -->
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
         <tr :class="thClasses">
-          <th colspan="7" :class="tableHeaderRowClass">
+          <th colspan="8" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
               <div class="card flex flex-wrap justify-left gap-4 font-medium">
                 <!-- Чекбокс все/активные -->
@@ -340,7 +398,6 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <span class="flex"></span>
-
             </div>
           </th>
         </tr>
@@ -353,6 +410,7 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Описание</th>
           <th :class="thClasses">Статус</th>
           <th :class="thClasses">Исполнитель</th>
+          <th :class="thClasses">План. длительность</th>
           <th :class="thClasses"></th>
         </tr>
         </thead>
@@ -360,7 +418,6 @@ onBeforeUnmount(() => {
         <tbody>
         <template v-for="task in tasksStore.tasks" :key="task.id">
           <tr :class="trBaseClass">
-
             <!-- id задачи -->
             <td :class="tdBaseTextClass">{{ task.id }}</td>
 
@@ -387,13 +444,13 @@ onBeforeUnmount(() => {
 
             <!-- Описание задачи -->
             <td
-              :class="[
-                tdBaseTextClass,
-                'cursor-pointer',
-                'hover:bg-gray-500',
-                'dark:hover:bg-gray-700',
-                {'text-sm text-gray-400 italic': !task.description}
-              ]"
+                :class="[
+                    tdBaseTextClass,
+                    'cursor-pointer',
+                    'hover:bg-gray-500',
+                    'dark:hover:bg-gray-700',
+                    {'text-sm text-gray-400 italic': !task.description}
+                ]"
                 @click="openDescriptionEditDialog(task.id, task.description)"
             >
               {{ task.description || 'Нет описания' }}
@@ -468,7 +525,7 @@ onBeforeUnmount(() => {
                   <template #value="slotProps">
                     <span v-if="slotProps.value">
                       {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
-                        (task.executor ? formatFIO(task.executor) : 'Неизвестный исполнитель') }}
+                    (task.executor ? formatFIO(task.executor) : 'Неизвестный исполнитель') }}
                     </span>
                     <span v-else>{{ slotProps.placeholder }}</span>
                   </template>
@@ -476,6 +533,30 @@ onBeforeUnmount(() => {
               </div>
             </td>
 
+            <!-- Плановая длительность -->
+            <td class="px-4 py-2" :class="tdBaseTextClass">
+              <div class="relative flex items-center">
+                <!-- Спиннер загрузки -->
+                <div
+                    v-if="loadingDurations[task.id]"
+                    class="absolute inset-0 flex items-center justify-center"
+                >
+                  <div
+                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <!-- Поле ввода длительности -->
+                <InputText
+                    v-model="task.planned_duration"
+                    class="w-full"
+                    :class="{ 'opacity-50': loadingDurations[task.id] }"
+                    :disabled="loadingDurations[task.id]"
+                    placeholder="P1DT2H30M"
+                    @blur="updatePlannedDuration(task.id, $event.target.value || null)"
+                    @keyup.enter="updatePlannedDuration(task.id, $event.target.value || null)"
+                />
+              </div>
+            </td>
 
             <td :class="tdBaseTextClass"></td>
           </tr>
@@ -484,7 +565,7 @@ onBeforeUnmount(() => {
 
         <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
           <td
-              colspan="6"
+              colspan="7"
               class="py-6 text-center text-lg text-gray-400 italic"
               :class="currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'"
           >
@@ -521,5 +602,4 @@ onBeforeUnmount(() => {
 .relative {
   position: relative;
 }
-
 </style>

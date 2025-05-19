@@ -244,6 +244,27 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
 
+    // Метод для обновления плановой длительности задачи
+    async function updateTaskPlannedDuration(taskId: number, newPlannedDuration: string | null): Promise<void> {
+        if (newPlannedDuration && newPlannedDuration.trim()) {
+            // Простая проверка формата ISO 8601 (например, P1D, P1DT2H30M)
+            const iso8601Regex = /^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?)?$/;
+            if (!iso8601Regex.test(newPlannedDuration.trim())) {
+                error.value = 'Недопустимый формат длительности. Используйте ISO 8601 (например, P1D или P1DT2H30M)';
+                return;
+            }
+        }
+
+        await patchTask(
+            taskId,
+            `${taskId}/planned_duration`,
+            newPlannedDuration, // Отправляем newPlannedDuration напрямую как строку или null
+            {},
+            `Плановая длительность задачи успешно обновлена`
+        );
+    }
+
+
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;
@@ -284,7 +305,6 @@ export const useTasksStore = defineStore('tasks', () => {
         isLoading,
         isCurrentTaskLoading,
         error,
-        fetchTasks,
         fetchTaskById,
         updateTaskStatus,
         updateTaskName,
@@ -293,6 +313,7 @@ export const useTasksStore = defineStore('tasks', () => {
         updateFilters,
         resetFilters,
         clearCurrentTask,
-        updateTaskExecutor
+        updateTaskExecutor,
+        updateTaskPlannedDuration
     };
 });
