@@ -211,7 +211,6 @@ onMounted(() => {
   // загружаем заказы
   fetchOrders();
 
-
 });
 
 // Функции для пагинации (вызывают setSkip в ordersTableStore)

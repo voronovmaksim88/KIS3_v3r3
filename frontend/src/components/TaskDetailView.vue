@@ -1,6 +1,6 @@
 <!-- TaskDetailView.vue -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
@@ -12,6 +12,9 @@ import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
 import { typeTask } from '@/types/typeTask.ts';
 import Textarea from 'primevue/textarea';
+import { usePeopleStore } from '@/stores/storePeople';
+import { formatFIO } from '@/utils/formatFIO';
+import {storeToRefs} from "pinia";
 
 interface Props {
   onClose?: () => void;
@@ -54,6 +57,24 @@ const isUpdating = ref(false);
 const taskDescription = ref<string | null>(currentTask.value?.description || null);
 const isDescriptionLoading = ref(false);
 
+// Состояние для загрузки исполнителя
+const isExecutorLoading = ref(false);
+
+// Store для людей
+const peopleStore = usePeopleStore();
+const { activeUsers } = storeToRefs(peopleStore);
+
+// Опции для исполнителей
+const executorOptions = computed(() => {
+  return [
+    { value: null, label: 'Без исполнителя' },
+    ...activeUsers.value.map(user => ({
+      value: user.uuid,
+      label: formatFIO(user),
+    })),
+  ];
+});
+
 const updateTaskName = async (taskId: number, newName: string) => {
   if (isUpdating.value) return; // Предотвращаем повторный вызов
   if (!newName.trim()) {
@@ -86,6 +107,46 @@ const updateTaskName = async (taskId: number, newName: string) => {
   } finally {
     isUpdating.value = false;
     isNameLoading.value = false;
+  }
+};
+
+
+// Функция для обновления исполнителя
+const updateExecutor = async (taskId: number, executorUuid: string | null) => {
+  if (isUpdating.value) return; // Предотвращаем повторный вызов
+  isUpdating.value = true;
+  isExecutorLoading.value = true;
+
+  try {
+    await tasksStore.updateTaskExecutor(taskId, executorUuid);
+
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить исполнителя задачи #${taskId}`,
+        life: 5000,
+      });
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: `Исполнитель задачи #${taskId} успешно изменён`,
+        life: 3000,
+      });
+      isStatusUpdated.value = true;
+    }
+  } catch (err) {
+    console.error('Ошибка при обновлении исполнителя:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: `Не удалось изменить исполнителя задачи #${taskId}`,
+      life: 5000,
+    });
+  } finally {
+    isUpdating.value = false;
+    isExecutorLoading.value = false;
   }
 };
 
@@ -229,14 +290,22 @@ const bgContentClass = computed(() => currentTheme.value === 'dark' ? 'bg-gray-7
 const textSecondaryClass = computed(() => currentTheme.value === 'dark' ? 'text-gray-300' : 'text-gray-600');
 const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-700' : 'border-gray-200');
 
-// Функция для форматирования ФИО исполнителя
-const formatExecutorName = (executor: { name: string; surname: string } | null): string => {
-  if (!executor) return 'Не назначен';
-  return `${executor.surname} ${executor.name}`;
-};
 
 const isSaving = ref(false); // Флаг для блокировки кнопки
 
+// Выполняется при монтировании компонента
+onMounted(() => {
+  // Загружаем активных пользователей
+  peopleStore.fetchActiveUsers().catch(err => {
+    console.error('Error fetching active users:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось загрузить список активных пользователей',
+      life: 5000,
+    });
+  });
+});
 </script>
 
 <template>
@@ -355,9 +424,32 @@ const isSaving = ref(false); // Флаг для блокировки кнопк�
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Исполнитель:</div>
         <div class="col-span-3">
-          <div :class="[bgContentClass, 'rounded-md p-4 transition-colors duration-300 border', borderClass]">
-            <p v-if="currentTask.executor">{{ formatExecutorName(currentTask.executor) }}</p>
-            <p v-else :class="currentTheme === 'dark' ? 'text-gray-400 italic' : 'text-gray-500 italic'">Не назначен</p>
+          <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
+            <div class="relative">
+              <!-- Индикатор загрузки исполнителя -->
+              <div v-if="isExecutorLoading" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+              <Select
+                  :modelValue="currentTask.executor?.uuid"
+                  :options="executorOptions"
+                  optionValue="value"
+                  optionLabel="label"
+                  placeholder="Выберите исполнителя"
+                  class="w-full"
+                  :class="{ 'opacity-50': isExecutorLoading }"
+                  :disabled="isExecutorLoading"
+                  @update:modelValue="updateExecutor(currentTask.id, $event)"
+              >
+                <template #value="slotProps">
+            <span v-if="slotProps.value">
+              {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
+            (currentTask.executor ? formatFIO(currentTask.executor) : 'Неизвестный исполнитель') }}
+            </span>
+                  <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
@@ -403,6 +495,11 @@ const isSaving = ref(false); // Флаг для блокировки кнопк�
     <!-- Сообщение об ошибке -->
     <div v-else-if="!isLoading && !currentTask" class="text-center py-8 text-red-500">
       Не удалось загрузить данные задачи
+    </div>
+
+    <!-- Загрузка активных пользователей -->
+    <div v-if="peopleStore.isLoading && !activeUsers.length" class="flex justify-center items-center py-4">
+      <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
   </BaseModal>
