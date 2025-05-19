@@ -164,6 +164,64 @@ const updateStatus = async (taskId: number, statusId: number) => {
   }
 };
 
+
+// Функция для обновления исполнителя задачи
+const updateExecutor = async (taskId: number, executorUuid: string | null) => {
+  try {
+    // Устанавливаем флаг загрузки для исполнителя
+    loadingExecutors.value[taskId] = true;
+
+    await tasksStore.updateTaskExecutor(taskId, executorUuid);
+
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось изменить исполнителя задачи #${taskId}`,
+        life: 5000,
+      });
+      return;
+    }
+
+    console.log(`Executor for task ${taskId} updated successfully`);
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Исполнитель задачи #${taskId} успешно изменён`,
+      life: 3000,
+    });
+
+    // Проверяем, есть ли связанный заказ
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        console.error('Error updating order:', ordersStore.error);
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      } else {
+        console.log(`Order ${task.order.serial} details updated successfully`);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating task executor:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || `Не удалось изменить исполнителя задачи #${taskId}`,
+      life: 5000,
+    });
+  } finally {
+    // Сбрасываем флаг загрузки
+    loadingExecutors.value[taskId] = false;
+  }
+};
+
+
 // Обработчик клика на имя задачи для открытия диалога
 const openNameEditDialog = (taskId: number, taskName: string) => {
   selectedTaskId.value = taskId;
@@ -405,6 +463,7 @@ onBeforeUnmount(() => {
                     placeholder="Выберите исполнителя"
                     class="w-full"
                     :class="{ 'opacity-50 pointer-events-none': loadingExecutors[task.id] }"
+                    @update:modelValue="updateExecutor(task.id, $event)"
                 >
                   <template #value="slotProps">
                     <span v-if="slotProps.value">

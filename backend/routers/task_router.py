@@ -359,7 +359,7 @@ async def update_task_executor(
 
         # Проверяем, существует ли указанный исполнитель, если UUID предоставлен
         if executor_uuid is not None:
-            person_query = select(Person).where(Person.uuid.is_(executor_uuid))
+            person_query = select(Person).where(Person.uuid == executor_uuid) # type: ignore
             person_result = await session.execute(person_query)
             person = person_result.scalars().first()
             if not person:
