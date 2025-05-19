@@ -15,6 +15,7 @@ import Textarea from 'primevue/textarea';
 import { usePeopleStore } from '@/stores/storePeople';
 import { formatFIO } from '@/utils/formatFIO';
 import {storeToRefs} from "pinia";
+import Button from "primevue/button";
 
 interface Props {
   onClose?: () => void;
@@ -293,6 +294,13 @@ const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-
 
 const isSaving = ref(false); // Флаг для блокировки кнопки
 
+// Функция для закрытия формы
+const closeForm = () => {
+  if (props.onClose) {
+    props.onClose();
+  }
+};
+
 // Выполняется при монтировании компонента
 onMounted(() => {
   // Загружаем активных пользователей
@@ -500,6 +508,16 @@ onMounted(() => {
     <!-- Загрузка активных пользователей -->
     <div v-if="peopleStore.isLoading && !activeUsers.length" class="flex justify-center items-center py-4">
       <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+
+    <div class="flex justify-end mt-4">
+      <Button
+          @click="closeForm"
+          label="OK"
+          icon="pi pi-check"
+          severity="success"
+          class="p-button-sm"
+      />
     </div>
 
   </BaseModal>
