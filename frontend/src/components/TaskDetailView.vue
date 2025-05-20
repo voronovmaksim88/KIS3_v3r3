@@ -503,7 +503,7 @@ onMounted(() => {
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">План. длительность:</div>
                 <div
-                    class="cursor-pointer hover:bg-gray-100 transition-colors duration-300 p-1 rounded"
+                    class="cursor-pointer hover:bg-gray-500 transition-colors duration-300 p-1 rounded border"
                     @click="openDurationEditDialog"
                 >
                   {{ formatDuration(currentTask.planned_duration) }}
