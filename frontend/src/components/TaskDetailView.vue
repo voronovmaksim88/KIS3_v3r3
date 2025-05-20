@@ -1,6 +1,6 @@
 <!-- TaskDetailView.vue -->
 <script setup lang="ts">
-import {computed, onMounted, ref, watch} from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
@@ -14,8 +14,9 @@ import { typeTask } from '@/types/typeTask.ts';
 import Textarea from 'primevue/textarea';
 import { usePeopleStore } from '@/stores/storePeople';
 import { formatFIO } from '@/utils/formatFIO';
-import {storeToRefs} from "pinia";
-import Button from "primevue/button";
+import { storeToRefs } from 'pinia';
+import Button from 'primevue/button';
+import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог
 
 interface Props {
   onClose?: () => void;
@@ -111,10 +112,9 @@ const updateTaskName = async (taskId: number, newName: string) => {
   }
 };
 
-
 // Функция для обновления исполнителя
 const updateExecutor = async (taskId: number, executorUuid: string | null) => {
-  if (isUpdating.value) return; // Предотвращаем повторный вызов
+  if (isUpdating.value) return;
   isUpdating.value = true;
   isExecutorLoading.value = true;
 
@@ -204,7 +204,7 @@ const updateTaskDescription = async (taskId: number, newDescription: string | nu
     return;
   }
   if ((newDescription?.trim() || null) === (currentTask.value?.description?.trim() || null)) {
-    return; // Не отправляем запрос, если описание не изменилось
+    return;
   }
 
   isUpdating.value = true;
@@ -291,7 +291,6 @@ const bgContentClass = computed(() => currentTheme.value === 'dark' ? 'bg-gray-7
 const textSecondaryClass = computed(() => currentTheme.value === 'dark' ? 'text-gray-300' : 'text-gray-600');
 const borderClass = computed(() => currentTheme.value === 'dark' ? 'border-gray-700' : 'border-gray-200');
 
-
 const isSaving = ref(false); // Флаг для блокировки кнопки
 
 // Функция для закрытия формы
@@ -301,9 +300,28 @@ const closeForm = () => {
   }
 };
 
+// Состояние для диалога редактирования длительности
+const showDurationEditDialog = ref(false);
+
+// Обработчик клика для открытия диалога длительности
+const openDurationEditDialog = () => {
+  if (currentTask.value) {
+    showDurationEditDialog.value = true;
+  }
+};
+
+// Обработчик успешного обновления длительности
+const handleDurationUpdate = () => {
+  showDurationEditDialog.value = false;
+};
+
+// Обработчик отмены редактирования длительности
+const handleDurationEditCancel = () => {
+  showDurationEditDialog.value = false;
+};
+
 // Выполняется при монтировании компонента
 onMounted(() => {
-  // Загружаем активных пользователей
   peopleStore.fetchActiveUsers().catch(err => {
     console.error('Error fetching active users:', err);
     toast.add({
@@ -336,7 +354,6 @@ onMounted(() => {
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
-              <!-- Индикатор загрузки имени -->
               <div v-if="isNameLoading" class="absolute inset-0 flex items-center justify-center z-10">
                 <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
@@ -360,7 +377,6 @@ onMounted(() => {
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
-              <!-- Индикатор загрузки статуса -->
               <div v-if="isStatusLoading" class="absolute inset-0 flex items-center justify-center z-10">
                 <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
@@ -408,7 +424,6 @@ onMounted(() => {
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
-              <!-- Индикатор загрузки описания -->
               <div v-if="isDescriptionLoading" class="absolute inset-0 flex items-center justify-center z-10">
                 <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
@@ -434,7 +449,6 @@ onMounted(() => {
         <div class="col-span-3">
           <div :class="[bgContentClass, 'rounded-md p-2 transition-colors duration-300 border', borderClass]">
             <div class="relative">
-              <!-- Индикатор загрузки исполнителя -->
               <div v-if="isExecutorLoading" class="absolute inset-0 flex items-center justify-center z-10">
                 <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
@@ -450,10 +464,10 @@ onMounted(() => {
                   @update:modelValue="updateExecutor(currentTask.id, $event)"
               >
                 <template #value="slotProps">
-            <span v-if="slotProps.value">
-              {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
-            (currentTask.executor ? formatFIO(currentTask.executor) : 'Неизвестный исполнитель') }}
-            </span>
+                  <span v-if="slotProps.value">
+                    {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
+                  (currentTask.executor ? formatFIO(currentTask.executor) : 'Неизвестный исполнитель') }}
+                  </span>
                   <span v-else>{{ slotProps.placeholder }}</span>
                 </template>
               </Select>
@@ -488,7 +502,12 @@ onMounted(() => {
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">План. длительность:</div>
-                <div>{{ formatDuration(currentTask.planned_duration) }}</div>
+                <div
+                    class="cursor-pointer hover:bg-gray-100 transition-colors duration-300 p-1 rounded"
+                    @click="openDurationEditDialog"
+                >
+                  {{ formatDuration(currentTask.planned_duration) }}
+                </div>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Факт. длительность:</div>
@@ -510,6 +529,15 @@ onMounted(() => {
       <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
+    <!-- Диалог редактирования плановой длительности -->
+    <TaskPlannedDurationEditDialog
+        v-model:visible="showDurationEditDialog"
+        :task-id="currentTask?.id ?? null"
+        :initial-duration="currentTask?.planned_duration ?? null"
+        @update-duration="handleDurationUpdate"
+        @cancel="handleDurationEditCancel"
+    />
+
     <div class="flex justify-end mt-4">
       <Button
           @click="closeForm"
@@ -519,7 +547,6 @@ onMounted(() => {
           class="p-button-sm"
       />
     </div>
-
   </BaseModal>
 </template>
 
