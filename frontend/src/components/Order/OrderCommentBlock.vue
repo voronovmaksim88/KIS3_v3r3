@@ -1,10 +1,10 @@
-<!-- src/components/OrderCommentBlock.vue -->
+<!-- src/components/Order/OrderCommentBlock.vue -->
 <script setup lang="ts">
 import {computed, ref} from 'vue';
 import {formatFIO} from "@/utils/formatFIO.ts";
 import Button from "primevue/button";
-import OrderCommentCreateForm from '@/components/OrderCommentCreateForm.vue'
-import {useOrdersStore} from '../stores/storeOrders';
+import OrderCommentCreateForm from '@/components/Order/OrderCommentCreateForm.vue'
+import {useOrdersStore} from '@/stores/storeOrders.ts';
 
 // Определение типа для комментария
 interface Comment {

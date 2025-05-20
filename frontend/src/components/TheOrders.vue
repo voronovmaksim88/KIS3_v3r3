@@ -17,10 +17,10 @@ import {useCounterpartyStore} from '@/stores/storeCounterparty';
 import {useWorksStore} from "@/stores/storeWorks";
 
 // мои компоненты
-import OrderCreateForm from '@/components/OrderCreateForm.vue';
-import OrderNameEditDialog from '@/components/OrderNameEditDialog.vue';
-import OrderWorksEditDialog from '@/components/OrderWorksEditDialog.vue';
-import OrderDetails from "@/components/OrderDetails.vue";
+import OrderCreateForm from '@/components/Order/OrderCreateForm.vue';
+import OrderNameEditDialog from '@/components/Order/OrderNameEditDialog.vue';
+import OrderWorksEditDialog from '@/components/Order/OrderWorksEditDialog.vue';
+import OrderDetails from "@/components/Order/OrderDetails.vue";
 
 // primevue компоненты
 import Toast from 'primevue/toast'

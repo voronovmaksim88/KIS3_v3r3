@@ -1,7 +1,7 @@
 <!-- OrderNameEditDialog.vue -->
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue';
-import { useOrdersStore } from '@/stores/storeOrders';
+import { useOrdersStore } from '@/stores/storeOrders.ts';
 import { useToast } from 'primevue/usetoast';
 
 // PrimeVue компоненты

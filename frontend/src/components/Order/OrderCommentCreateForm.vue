@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {reactive, computed, ref, onMounted, nextTick} from 'vue'
-import { useCommentStore } from '@/stores/storeComments'
+import { useCommentStore } from '@/stores/storeComments.ts'
 import { useToast } from 'primevue/usetoast'
 import BaseModal from '@/components/BaseModal.vue'
 

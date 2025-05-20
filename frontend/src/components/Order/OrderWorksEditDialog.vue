@@ -1,10 +1,10 @@
 <!-- src/components/OrderWorksEditDialog -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useOrdersStore } from '@/stores/storeOrders';
-import { useWorksStore } from '@/stores/storeWorks'; // Import works store
+import { useOrdersStore } from '@/stores/storeOrders.ts';
+import { useWorksStore } from '@/stores/storeWorks.ts'; // Import works store
 import { useToast } from 'primevue/usetoast';
-import type { typeWork } from '@/types/typeWork'; // <-- Import the type
+import type { typeWork } from '@/types/typeWork.ts'; // <-- Import the type
 
 // PrimeVue компоненты
 import Dialog from 'primevue/dialog';

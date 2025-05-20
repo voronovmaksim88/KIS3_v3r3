@@ -1,7 +1,7 @@
 <!-- src/components/OrderFinanceBlock.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useOrdersStore } from '@/stores/storeOrders';
+import { useOrdersStore } from '@/stores/storeOrders.ts';
 import InputNumber from 'primevue/inputnumber';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';

@@ -2,11 +2,11 @@
 <script setup lang="ts">
 import {onMounted} from 'vue';
 import {reactive, computed} from 'vue';
-import {useOrdersStore} from '@/stores/storeOrders';
-import {useCounterpartyStore} from '@/stores/storeCounterparty'; // Импортируем store контрагентов
+import {useOrdersStore} from '@/stores/storeOrders.ts';
+import {useCounterpartyStore} from '@/stores/storeCounterparty.ts'; // Импортируем store контрагентов
 import {useToast} from 'primevue/usetoast';
 import BaseModal from '@/components/BaseModal.vue';
-import {useWorksStore} from "@/stores/storeWorks";
+import {useWorksStore} from "@/stores/storeWorks.ts";
 import {getOrderStatusColor} from "@/utils/getStatusColor.ts";
 
 // PrimeVue компоненты

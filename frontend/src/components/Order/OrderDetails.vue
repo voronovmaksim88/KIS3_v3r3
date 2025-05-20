@@ -1,8 +1,8 @@
 <!-- src/components/OrderDetails.vue -->
 <script setup lang="ts">
-import OrderCommentBlock from '@/components/OrderCommentBlock.vue';
-import OrderDateBlock from '@/components/OrderDateBlock.vue';
-import OrderFinanceBlock from '@/components/OrderFinanceBlock.vue';
+import OrderCommentBlock from '@/components/Order/OrderCommentBlock.vue';
+import OrderDateBlock from '@/components/Order/OrderDateBlock.vue';
+import OrderFinanceBlock from '@/components/Order/OrderFinanceBlock.vue';
 import TaskList from '@/components/TaskList.vue';
 
 // Определение props

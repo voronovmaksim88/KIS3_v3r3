@@ -14,6 +14,7 @@ import { useToast } from 'primevue/usetoast';
 import { getOrderStatusColor, getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
+import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог длительности
 import { formatFIO } from "@/utils/formatFIO.ts";
 import Paginator from 'primevue/paginator';
 import { computed } from 'vue';
@@ -76,6 +77,10 @@ const loadingStatuses = ref<Record<number, boolean>>({});
 // Состояние для диалога изменения описания задачи
 const showDescriptionEditDialog = ref(false);
 const selectedTaskDescription = ref<string | null>(null);
+
+// Состояние для диалога изменения плановой длительности
+const showDurationEditDialog = ref(false); // Новое состояние для диалога длительности
+const selectedTaskDuration = ref<string | null>(null); // Хранит planned_duration
 
 // Состояние пагинации
 const currentPage = ref(0); // Текущая страница (0-based для вычислений)
@@ -283,6 +288,24 @@ const formatDurationToHours = (isoDuration: string | null): string => {
   }
 };
 
+// Обработчик клика на плановую длительность для открытия диалога
+const openDurationEditDialog = (taskId: number, duration: string | null) => {
+  selectedTaskId.value = taskId;
+  selectedTaskDuration.value = duration;
+  showDurationEditDialog.value = true;
+};
+
+// Обработчик успешного обновления длительности
+const handleDurationUpdate = ({ taskId, newDuration }: { taskId: number; newDuration: string }) => {
+  console.log(`Task ${taskId} duration updated to ${newDuration}`);
+  showDurationEditDialog.value = false;
+};
+
+// Обработчик отмены редактирования длительности
+const handleDurationEditCancel = () => {
+  console.log('Task duration edit cancelled');
+  showDurationEditDialog.value = false;
+};
 
 // Выполняется при монтировании компонента
 onMounted(() => {
@@ -322,6 +345,14 @@ onBeforeUnmount(() => {
       :initial-description="selectedTaskDescription"
       @update-description="handleDescriptionUpdate"
       @cancel="handleDescriptionEditCancel"
+  />
+
+  <TaskPlannedDurationEditDialog
+      v-model:visible="showDurationEditDialog"
+      :task-id="selectedTaskId"
+      :initial-duration="selectedTaskDuration"
+      @update-duration="handleDurationUpdate"
+      @cancel="handleDurationEditCancel"
   />
 
   <div class="w-full p-4">
@@ -447,19 +478,19 @@ onBeforeUnmount(() => {
                     @update:modelValue="updateStatus(task.id, $event)"
                 >
                   <template #value="slotProps">
-                      <span
-                          v-if="slotProps.value"
-                          :style="{ color: getTaskStatusColor(slotProps.value) }"
-                      >
-                        {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
-                      </span>
+                    <span
+                        v-if="slotProps.value"
+                        :style="{ color: getTaskStatusColor(slotProps.value) }"
+                    >
+                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
+                    </span>
                     <span v-else>{{ slotProps.placeholder }}</span>
                   </template>
                   <template #option="slotProps">
                     <div class="flex items-center">
-                        <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
-                          {{ slotProps.option.label }}
-                        </span>
+                      <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
+                        {{ slotProps.option.label }}
+                      </span>
                     </div>
                   </template>
                 </Select>
@@ -501,7 +532,11 @@ onBeforeUnmount(() => {
             </td>
 
             <!-- Плановая длительность -->
-            <td :class="tdBaseTextClass">
+            <td
+                :class="tdBaseTextClass"
+                class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
+                @click="openDurationEditDialog(task.id, task.planned_duration)"
+            >
               {{ formatDurationToHours(task.planned_duration) }}
             </td>
 
