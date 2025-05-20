@@ -17,7 +17,6 @@ import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vu
 import { formatFIO } from "@/utils/formatFIO.ts";
 import Paginator from 'primevue/paginator';
 import { computed } from 'vue';
-import InputText from 'primevue/inputtext';
 
 // Композитные компоненты
 const {
@@ -58,9 +57,6 @@ const executorOptions = computed(() => {
 
 // Состояние загрузки для каждого исполнителя
 const loadingExecutors = ref<Record<number, boolean>>({});
-
-// Состояние загрузки для каждого поля плановой длительности
-const loadingDurations = ref<Record<number, boolean>>({});
 
 // Локальные фильтры для двусторонней привязки
 const localFilters = ref<TaskFilters>({
@@ -223,61 +219,6 @@ const updateExecutor = async (taskId: number, executorUuid: string | null) => {
   }
 };
 
-// Функция для обновления плановой длительности задачи
-const updatePlannedDuration = async (taskId: number, newDuration: string | null) => {
-  try {
-    // Устанавливаем флаг загрузки для длительности
-    loadingDurations.value[taskId] = true;
-
-    await tasksStore.updateTaskPlannedDuration(taskId, newDuration);
-
-    if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось изменить плановую длительность задачи #${taskId}`,
-        life: 5000,
-      });
-      return;
-    }
-
-    console.log(`Planned duration for task ${taskId} updated successfully`);
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Плановая длительность задачи #${taskId} успешно изменена`,
-      life: 3000,
-    });
-
-    // Проверяем, есть ли связанный заказ
-    const task = tasksStore.tasks.find(t => t.id === taskId);
-    if (task?.order?.serial) {
-      await ordersStore.fetchOrderDetail(task.order.serial);
-      if (ordersStore.error) {
-        console.error('Error updating order:', ordersStore.error);
-        toast.add({
-          severity: 'error',
-          summary: 'Ошибка',
-          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-          life: 5000,
-        });
-      } else {
-        console.log(`Order ${task.order.serial} details updated successfully`);
-      }
-    }
-  } catch (err) {
-    console.error('Error updating task planned duration:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось изменить плановую длительность задачи #${taskId}`,
-      life: 5000,
-    });
-  } finally {
-    // Сбрасываем флаг загрузки
-    loadingDurations.value[taskId] = false;
-  }
-};
 
 // Обработчик клика на имя задачи для открытия диалога
 const openNameEditDialog = (taskId: number, taskName: string) => {
@@ -316,6 +257,32 @@ const handleDescriptionEditCancel = () => {
   console.log('Task description edit cancelled');
   showDescriptionEditDialog.value = false;
 };
+
+
+// Функция для преобразования ISO 8601 длительности в часы и минуты
+const formatDurationToHours = (isoDuration: string | null): string => {
+  if (!isoDuration) return '—';
+  try {
+    const match = isoDuration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/);
+    if (!match) return 'Неверный формат';
+    const days = parseInt(match[1] || '0');
+    const hours = parseInt(match[2] || '0');
+    const minutes = parseInt(match[3] || '0');
+    const totalMinutes = days * 24 * 60 + hours * 60 + minutes;
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+
+    if (totalHours >= 1) {
+      return remainingMinutes === 0
+          ? `${totalHours}ч`
+          : `${totalHours}ч ${remainingMinutes}м`;
+    }
+    return `${totalMinutes}м`;
+  } catch {
+    return 'Неверный формат';
+  }
+};
+
 
 // Выполняется при монтировании компонента
 onMounted(() => {
@@ -379,8 +346,8 @@ onBeforeUnmount(() => {
           <col style="width: 20%" />
           <col style="width: 10%" />
           <col style="width: 10%" />
-          <col style="width: 10%" /> <!-- Новый столбец для плановой длительности -->
-          <col style="width: 23%" /> <!-- Уменьшенный пустой столбец -->
+          <col style="width: 5%" />
+          <col style="width: 28%" />
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
@@ -410,7 +377,7 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Описание</th>
           <th :class="thClasses">Статус</th>
           <th :class="thClasses">Исполнитель</th>
-          <th :class="thClasses">План. длительность</th>
+          <th :class="thClasses">План</th>
           <th :class="thClasses"></th>
         </tr>
         </thead>
@@ -534,28 +501,8 @@ onBeforeUnmount(() => {
             </td>
 
             <!-- Плановая длительность -->
-            <td class="px-4 py-2" :class="tdBaseTextClass">
-              <div class="relative flex items-center">
-                <!-- Спиннер загрузки -->
-                <div
-                    v-if="loadingDurations[task.id]"
-                    class="absolute inset-0 flex items-center justify-center"
-                >
-                  <div
-                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
-                  ></div>
-                </div>
-                <!-- Поле ввода длительности -->
-                <InputText
-                    v-model="task.planned_duration"
-                    class="w-full"
-                    :class="{ 'opacity-50': loadingDurations[task.id] }"
-                    :disabled="loadingDurations[task.id]"
-                    placeholder="P1DT2H30M"
-                    @blur="updatePlannedDuration(task.id, $event.target.value || null)"
-                    @keyup.enter="updatePlannedDuration(task.id, $event.target.value || null)"
-                />
-              </div>
+            <td :class="tdBaseTextClass">
+              {{ formatDurationToHours(task.planned_duration) }}
             </td>
 
             <td :class="tdBaseTextClass"></td>
