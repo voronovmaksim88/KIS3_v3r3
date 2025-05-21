@@ -14,6 +14,7 @@ from models import Task
 from schemas.task_schem import PaginatedTaskResponse
 from schemas.task_schem import TaskRead
 from datetime import timedelta
+from datetime import datetime
 from isodate import parse_duration
 
 # Настройка логирования
@@ -468,4 +469,122 @@ async def update_task_planned_duration(
         raise HTTPException(
             status_code=500,
             detail="Ошибка при обновлении плановой длительности задачи"
+        )
+
+
+@router.patch("/{task_id}/start_moment", response_model=TaskRead)
+async def update_task_start_moment(
+        task_id: int,
+        new_start_moment: Optional[datetime] = Body(
+            None,
+            description="New start moment for the task in ISO 8601 format (e.g., 2023-10-01T12:00:00Z)"
+        ),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить время начала задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - new_start_moment: Новое время начала задачи в формате ISO 8601 (может быть null).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        logger.info(f"Received request to update task {task_id} with new start_moment={new_start_moment}")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Преобразуем offset-aware datetime в offset-naive
+        start_moment_value = new_start_moment.replace(tzinfo=None) if new_start_moment else None
+
+        # Обновляем время начала задачи
+        update_query = update(Task).where(Task.id == task_id).values(start_moment=start_moment_value)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} start moment updated to {new_start_moment}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating task start moment: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при обновлении времени начала задачи: {str(e)}"
+        )
+
+
+@router.patch("/{task_id}/deadline_moment", response_model=TaskRead)
+async def update_task_deadline_moment(
+        task_id: int,
+        new_deadline_moment: Optional[datetime] = Body(
+            None,
+            description="New deadline moment for the task in ISO 8601 format (e.g., 2023-10-01T12:00:00Z)"
+        ),
+        session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Обновить дедлайн задачи по её ID.
+
+    Параметры:
+    - task_id: ID задачи, которую нужно обновить.
+    - new_deadline_moment: Новый дедлайн задачи в формате ISO 8601 (может быть null).
+
+    Возвращает:
+    - TaskRead: Обновлённые данные задачи.
+    """
+    try:
+        logger.info(f"Received request to update task {task_id} with new deadline_moment={new_deadline_moment}")
+
+        # Ищем задачу по ID
+        query = select(Task).where(Task.id == task_id).options(
+            selectinload(Task.payment_status),
+            selectinload(Task.order),
+            selectinload(Task.executor)
+        )
+        result = await session.execute(query)
+        task = result.scalars().first()
+
+        if not task:
+            logger.warning(f"Task with id {task_id} not found")
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Преобразуем offset-aware datetime в offset-naive
+        new_deadline_moment_value = new_deadline_moment.replace(tzinfo=None) if new_deadline_moment else None
+
+        # Обновляем дедлайн задачи
+        update_query = update(Task).where(Task.id == task_id).values(deadline_moment=new_deadline_moment_value)
+        await session.execute(update_query)
+        await session.commit()
+
+        # Обновляем объект задачи для возврата актуальных данных
+        await session.refresh(task)
+
+        logger.info(f"Task {task_id} deadline moment updated to {new_deadline_moment}")
+        return TaskRead.model_validate(task)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating task deadline moment: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при обновлении дедлайна задачи: {str(e)}"
         )
