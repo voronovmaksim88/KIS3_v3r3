@@ -18,9 +18,12 @@ import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditD
 import { formatFIO } from "@/utils/formatFIO.ts";
 import Paginator from 'primevue/paginator';
 import { computed } from 'vue';
-// Состояние для диалога изменения плановой длительности
+import DatePicker from 'primevue/datepicker';
 
 
+// Состояние загрузки для каждого DatePicker
+const loadingStartMoments = ref<Record<number, boolean>>({});
+const loadingDeadlineMoments = ref<Record<number, boolean>>({});
 
 // Композитные компоненты
 const {
@@ -85,19 +88,23 @@ const selectedTaskDescription = ref<string | null>(null);
 const showDurationEditDialog = ref(false); // Новое состояние для диалога длительности
 const selectedTaskDuration = ref<string | null>(null); // Хранит planned_duration
 
-// Состояние для DatePicker
-const showStartDatePicker = ref(false);
-const showDeadlineDatePicker = ref(false);
-const selectedDate = ref<Date | null>(null);
-const editingTaskId = ref<number | null>(null);
-const isEditingStart = ref(false); // Флаг, чтобы различать редактирование start или deadline
-
 // Состояние пагинации
 const currentPage = ref(0); // Текущая страница (0-based для вычислений)
 const rowsPerPage = ref(10); // Количество строк на странице
 
 // Вычисляем skip на основе текущей страницы и строк на странице
 const skip = computed(() => currentPage.value * rowsPerPage.value);
+
+
+// Утилита для преобразования ISO строки в Date и обратно
+const convertIsoToDate = (isoString: string | null): Date | null => {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+const startDates = ref<Record<number, Date | null>>({});
+const deadlineDates = ref<Record<number, Date | null>>({});
 
 // Синхронизация пагинации с хранилищем
 watch([currentPage, rowsPerPage], () => {
@@ -317,66 +324,124 @@ const handleDurationEditCancel = () => {
   showDurationEditDialog.value = false;
 };
 
-// Обработчики для открытия DatePicker
-const openStartDatePicker = (taskId: number, startMoment: string | null) => {
-  editingTaskId.value = taskId;
-  isEditingStart.value = true;
-  selectedDate.value = startMoment ? new Date(startMoment) : null;
-  showStartDatePicker.value = true;
-};
-
-const openDeadlineDatePicker = (taskId: number, deadlineMoment: string | null) => {
-  editingTaskId.value = taskId;
-  isEditingStart.value = false;
-  selectedDate.value = deadlineMoment ? new Date(deadlineMoment) : null;
-  showDeadlineDatePicker.value = true;
-};
-
-// Обработчик выбора даты
-const handleDateSelect = async () => {
-  if (editingTaskId.value && selectedDate.value) {
-    const isoDate = selectedDate.value.toISOString();
-    if (isEditingStart.value) {
-      await tasksStore.updateTaskStartMoment(editingTaskId.value, isoDate);
-      if (!tasksStore.error) {
-        toast.add({
-          severity: 'success',
-          summary: 'Успешно',
-          detail: `Дата начала задачи #${editingTaskId.value} обновлена`,
-          life: 3000,
-        });
-      }
-    } else {
-      await tasksStore.updateTaskDeadlineMoment(editingTaskId.value, isoDate);
-      if (!tasksStore.error) {
-        toast.add({
-          severity: 'success',
-          summary: 'Успешно',
-          detail: `Дедлайн задачи #${editingTaskId.value} обновлён`,
-          life: 3000,
-        });
-      }
-    }
+// Функция для обновления времени начала задачи
+const updateTaskStartMoment = async (taskId: number, newStartMoment: Date | null) => {
+  try {
+    loadingStartMoments.value[taskId] = true;
+    const isoDate = newStartMoment
+        ? new Date(Date.UTC(
+            newStartMoment.getFullYear(),
+            newStartMoment.getMonth(),
+            newStartMoment.getDate()
+        )).toISOString()
+        : null;
+    await tasksStore.updateTaskStartMoment(taskId, isoDate);
     if (tasksStore.error) {
       toast.add({
         severity: 'error',
         summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось обновить дату`,
+        detail: tasksStore.error || `Не удалось обновить дату начала задачи #${taskId}`,
         life: 5000,
       });
+      return;
     }
-    showStartDatePicker.value = false;
-    showDeadlineDatePicker.value = false;
+    console.log(`Start moment for task ${taskId} updated successfully`);
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Дата начала задачи #${taskId} обновлена`,
+      life: 3000,
+    });
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        console.error('Error updating order:', ordersStore.error);
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      } else {
+        console.log(`Order ${task.order.serial} details updated successfully`);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating task start moment:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || `Не удалось обновить дату начала задачи #${taskId}`,
+      life: 5000,
+    });
+  } finally {
+    loadingStartMoments.value[taskId] = false;
   }
 };
 
-// Обработчик отмены выбора даты
-const handleDateCancel = () => {
-  showStartDatePicker.value = false;
-  showDeadlineDatePicker.value = false;
-  selectedDate.value = null;
-  editingTaskId.value = null;
+// Функция для обновления дедлайна задачи
+const updateTaskDeadlineMoment = async (taskId: number, newDeadlineMoment: Date | null) => {
+  try {
+    loadingDeadlineMoments.value[taskId] = true;
+    const isoDate = newDeadlineMoment
+        ? new Date(Date.UTC(
+            newDeadlineMoment.getFullYear(),
+            newDeadlineMoment.getMonth(),
+            newDeadlineMoment.getDate()
+        )).toISOString()
+        : null;
+    await tasksStore.updateTaskDeadlineMoment(taskId, isoDate);
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось обновить дедлайн задачи #${taskId}`,
+        life: 5000,
+      });
+      return;
+    }
+    console.log(`Deadline moment for task ${taskId} updated successfully`);
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: `Дедлайн задачи #${taskId} обновлён`,
+      life: 3000,
+    });
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        console.error('Error updating order:', ordersStore.error);
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      } else {
+        console.log(`Order ${task.order.serial} details updated successfully`);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating task deadline moment:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || `Не удалось обновить дедлайн задачи #${taskId}`,
+      life: 5000,
+    });
+  } finally {
+    loadingDeadlineMoments.value[taskId] = false;
+  }
 };
+
+// Минимальная допустимая дата (сегодня)
+const today = computed(() => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+});
 
 // Выполняется при монтировании компонента
 onMounted(() => {
@@ -394,6 +459,13 @@ onMounted(() => {
     });
   });
 });
+
+watch(() => tasksStore.tasks, (tasks) => {
+  for (const task of tasks) {
+    startDates.value[task.id] = convertIsoToDate(task.start_moment);
+    deadlineDates.value[task.id] = convertIsoToDate(task.deadline_moment);
+  }
+}, { immediate: true });
 
 // Очистка задач при размонтировании компонента
 onBeforeUnmount(() => {
@@ -446,17 +518,19 @@ onBeforeUnmount(() => {
         <colgroup>
           <col style="width: 3%" />
           <col style="width: 4%" />
+          <col style="width: 12%" />
           <col style="width: 15%" />
-          <col style="width: 20%" />
-          <col style="width: 10%" />
+          <col style="width: 8%" />
           <col style="width: 10%" />
           <col style="width: 5%" />
-          <col style="width: 28%" />
+          <col style="width: 10%" /> <!-- столбец для start_moment -->
+          <col style="width: 10%" /> <!-- столбец для deadline_moment -->
+          <col style="width: 23%" />
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
         <tr :class="thClasses">
-          <th colspan="8" :class="tableHeaderRowClass">
+          <th colspan="10" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
               <div class="card flex flex-wrap justify-left gap-4 font-medium">
                 <!-- Чекбокс все/активные -->
@@ -482,6 +556,8 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Статус</th>
           <th :class="thClasses">Исполнитель</th>
           <th :class="thClasses">План</th>
+          <th :class="thClasses">Дата начала</th>
+          <th :class="thClasses">Дедлайн</th>
           <th :class="thClasses"></th>
         </tr>
         </thead>
@@ -613,20 +689,70 @@ onBeforeUnmount(() => {
               {{ formatDurationToHours(task.planned_duration) }}
             </td>
 
+            <!-- Дата начала -->
+            <td :class="tdBaseTextClass" class="px-4 py-2">
+              <div class="relative flex items-center">
+                <div
+                    v-if="loadingStartMoments[task.id]"
+                    class="absolute inset-0 flex items-center justify-center"
+                >
+                  <div
+                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <DatePicker
+                    v-model="startDates[task.id]"
+                    dateFormat="dd.mm.yy"
+                    placeholder="Выберите дату"
+                    :showIcon="true"
+                    :minDate="today"
+                    class="w-full"
+                    :class="{ 'opacity-50 pointer-events-none': loadingStartMoments[task.id] }"
+                    @update:modelValue="updateTaskStartMoment(task.id, startDates[task.id])"
+                />
+              </div>
+            </td>
+
+            <!-- Дедлайн -->
+            <td :class="tdBaseTextClass" class="px-4 py-2">
+              <div class="relative flex items-center">
+                <div
+                    v-if="loadingDeadlineMoments[task.id]"
+                    class="absolute inset-0 flex items-center justify-center"
+                >
+                  <div
+                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <DatePicker
+                    v-model="deadlineDates[task.id]"
+                    dateFormat="dd.mm.yy"
+                    placeholder="Выберите дату"
+                    :showIcon="true"
+                    :minDate="today"
+                    class="w-full"
+                    :class="{ 'opacity-50 pointer-events-none': loadingDeadlineMoments[task.id] }"
+                    @update:modelValue="updateTaskDeadlineMoment(task.id, deadlineDates[task.id])"
+                />
+              </div>
+            </td>
+
             <td :class="tdBaseTextClass"></td>
           </tr>
-          <tr></tr>
         </template>
 
         <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
           <td
-              colspan="7"
+              colspan="10"
               class="py-6 text-center text-lg text-gray-400 italic"
               :class="currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'"
           >
             Задач не найдено
           </td>
         </tr>
+
+
+
         </tbody>
       </table>
 
