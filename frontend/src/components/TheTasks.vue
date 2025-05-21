@@ -1,24 +1,38 @@
 <!-- src/components/TheTasks.vue -->
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+// Базовые хуки Vue
+import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue';
+
+// Хук Pinia для рефакторинга стореджей
 import { storeToRefs } from 'pinia';
+
+// Сторежки (Pinia stores)
 import { useTasksStore } from '../stores/storeTasks';
 import { useOrdersStore } from '../stores/storeOrders';
 import { usePeopleStore } from '../stores/storePeople';
-import { type TaskFilters } from '../stores/storeTasks';
 import { useThemeStore } from '../stores/storeTheme';
+
+// Композиционные хуки (Composables)
 import { useTableStyles } from '../composables/useTableStyles';
-import Select from 'primevue/select';
-import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+
+// Ютила-функции
 import { getOrderStatusColor, getTaskStatusColor } from '@/utils/getStatusColor.ts';
+import { formatFIO } from '@/utils/formatFIO.ts';
+
+// Диалоговые окна (модальные компоненты)
 import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
 import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
 import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог длительности
-import { formatFIO } from "@/utils/formatFIO.ts";
+
+// Компоненты PrimeVue UI
+import Select from 'primevue/select';
+import Toast from 'primevue/toast';
 import Paginator from 'primevue/paginator';
-import { computed } from 'vue';
 import DatePicker from 'primevue/datepicker';
+
+// Дополнительные типы
+import { type TaskFilters } from '../stores/storeTasks';
 
 
 // Состояние загрузки для каждого DatePicker

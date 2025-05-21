@@ -1,4 +1,3 @@
-<!-- TaskDetailView.vue -->
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTasksStore } from '@/stores/storeTasks';
@@ -16,7 +15,8 @@ import { usePeopleStore } from '@/stores/storePeople';
 import { formatFIO } from '@/utils/formatFIO';
 import { storeToRefs } from 'pinia';
 import Button from 'primevue/button';
-import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог
+import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue';
+import DatePicker from 'primevue/datepicker'; // Импортируем DatePicker
 
 interface Props {
   onClose?: () => void;
@@ -77,8 +77,124 @@ const executorOptions = computed(() => {
   ];
 });
 
+// Состояния загрузки для DatePicker
+const isStartMomentLoading = ref(false);
+const isDeadlineMomentLoading = ref(false);
+
+// Локальные реактивные переменные для дат
+const startDate = ref<Date | null>(null);
+const deadlineDate = ref<Date | null>(null);
+
+// Утилита для преобразования ISO строки в Date и обратно
+const convertIsoToDate = (isoString: string | null): Date | null => {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+// Функция для обновления даты начала задачи
+const updateTaskStartMoment = async (taskId: number, newStartMoment: Date | null) => {
+  isUpdating.value = true;
+  isStartMomentLoading.value = true;
+
+  try {
+    const isoDate = newStartMoment
+        ? new Date(Date.UTC(
+            newStartMoment.getFullYear(),
+            newStartMoment.getMonth(),
+            newStartMoment.getDate()
+        )).toISOString()
+        : null;
+    await tasksStore.updateTaskStartMoment(taskId, isoDate);
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось обновить дату начала задачи #${taskId}`,
+        life: 5000,
+      });
+      // Возвращаем исходное значение в случае ошибки
+      startDate.value = convertIsoToDate(currentTask.value?.start_moment || null);
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: `Дата начала задачи #${taskId} обновлена`,
+        life: 3000,
+      });
+      isStatusUpdated.value = true;
+    }
+  } catch (err) {
+    console.error('Error updating task start moment:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: `Не удалось обновить дату начала задачи #${taskId}`,
+      life: 5000,
+    });
+    startDate.value = convertIsoToDate(currentTask.value?.start_moment || null);
+  } finally {
+    isUpdating.value = false;
+    isStartMomentLoading.value = false;
+  }
+};
+
+// Функция для обновления дедлайна задачи
+const updateTaskDeadlineMoment = async (taskId: number, newDeadlineMoment: Date | null) => {
+  isUpdating.value = true;
+  isDeadlineMomentLoading.value = true;
+
+  try {
+    const isoDate = newDeadlineMoment
+        ? new Date(Date.UTC(
+            newDeadlineMoment.getFullYear(),
+            newDeadlineMoment.getMonth(),
+            newDeadlineMoment.getDate()
+        )).toISOString()
+        : null;
+    await tasksStore.updateTaskDeadlineMoment(taskId, isoDate);
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось обновить дедлайн задачи #${taskId}`,
+        life: 5000,
+      });
+      // Возвращаем исходное значение в случае ошибки
+      deadlineDate.value = convertIsoToDate(currentTask.value?.deadline_moment || null);
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: `Дедлайн задачи #${taskId} обновлён`,
+        life: 3000,
+      });
+      isStatusUpdated.value = true;
+    }
+  } catch (err) {
+    console.error('Error updating task deadline moment:', err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: `Не удалось обновить дедлайн задачи #${taskId}`,
+      life: 5000,
+    });
+    deadlineDate.value = convertIsoToDate(currentTask.value?.deadline_moment || null);
+  } finally {
+    isUpdating.value = false;
+    isDeadlineMomentLoading.value = false;
+  }
+};
+
 const updateTaskName = async (taskId: number, newName: string) => {
-  if (isUpdating.value) return; // Предотвращаем повторный вызов
+
+  // Добавляем проверку, изменилось ли имя задачи
+  if (newName.trim() === (currentTask.value?.name?.trim() || '')) {
+    isNameLoading.value = false; // Убедимся, что индикатор загрузки сброшен, если он был активен
+    isUpdating.value = false; // Сбрасываем флаг обновления
+    return; // Если имя не изменилось, ничего не делаем
+  }
+
   if (!newName.trim()) {
     toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Имя задачи не может быть пустым', life: 5000 });
     taskName.value = currentTask.value?.name || '';
@@ -114,7 +230,6 @@ const updateTaskName = async (taskId: number, newName: string) => {
 
 // Функция для обновления исполнителя
 const updateExecutor = async (taskId: number, executorUuid: string | null) => {
-  if (isUpdating.value) return;
   isUpdating.value = true;
   isExecutorLoading.value = true;
 
@@ -154,7 +269,10 @@ const updateExecutor = async (taskId: number, executorUuid: string | null) => {
 // Синхронизация taskName с currentTask.name при изменении currentTask
 watch(currentTask, (newTask) => {
   taskName.value = newTask?.name || '';
-});
+  taskDescription.value = newTask?.description || null;
+  startDate.value = convertIsoToDate(newTask?.start_moment || null);
+  deadlineDate.value = convertIsoToDate(newTask?.deadline_moment || null);
+}, { immediate: true }); // immediate: true для инициализации при первом рендере
 
 // Функция для обновления статуса задачи и заказа
 const updateStatus = async (taskId: number, statusId: number) => {
@@ -197,7 +315,7 @@ const updateStatus = async (taskId: number, statusId: number) => {
 
 // Обновление описания задачи
 const updateTaskDescription = async (taskId: number, newDescription: string | null) => {
-  if (isUpdating.value) return; // Предотвращаем повторный вызов
+
   if (newDescription && newDescription.length > 1024) {
     toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Описание задачи не должно превышать 1024 символа', life: 5000 });
     taskDescription.value = currentTask.value?.description || null;
@@ -228,11 +346,6 @@ const updateTaskDescription = async (taskId: number, newDescription: string | nu
     isDescriptionLoading.value = false;
   }
 };
-
-// Синхронизация taskDescription с currentTask.description при изменении currentTask
-watch(currentTask, (newTask) => {
-  taskDescription.value = newTask?.description || null;
-});
 
 // Для форматирования дат
 const formatDateTime = (dateString: string | null): string => {
@@ -320,6 +433,13 @@ const handleDurationEditCancel = () => {
   showDurationEditDialog.value = false;
 };
 
+// Минимальная допустимая дата (сегодня)
+const today = computed(() => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+});
+
 // Выполняется при монтировании компонента
 onMounted(() => {
   peopleStore.fetchActiveUsers().catch(err => {
@@ -341,14 +461,11 @@ onMounted(() => {
   >
     <Toast />
 
-    <!-- Индикатор загрузки -->
     <div v-if="isLoading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
-    <!-- Содержимое при загруженных данных -->
     <div v-if="currentTask" class="grid grid-cols-1 gap-4 mb-6">
-      <!-- Название -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Название:</div>
         <div class="col-span-3">
@@ -360,8 +477,7 @@ onMounted(() => {
               <InputText
                   v-model="taskName"
                   class="w-full"
-                  :class="{ 'opacity-50': isNameLoading }"
-                  :disabled="isNameLoading"
+                  :class="{ 'opacity-50': isNameLoading}"
                   placeholder="Введите название задачи"
                   @blur="updateTaskName(currentTask.id, taskName)"
                   @keyup.enter="updateTaskName(currentTask.id, taskName)"
@@ -371,7 +487,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Статус -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Статус:</div>
         <div class="col-span-3">
@@ -388,8 +503,7 @@ onMounted(() => {
                   optionLabel="label"
                   placeholder="Выберите статус"
                   class="w-full"
-                  :class="{ 'opacity-50': isStatusLoading }"
-                  :disabled="isStatusLoading"
+                  :class="{ 'opacity-50': isStatusLoading}"
                   @update:modelValue="updateStatus(currentTask.id, $event)"
               >
                 <template #value="slotProps">
@@ -418,7 +532,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Описание -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Описание:</div>
         <div class="col-span-3">
@@ -431,7 +544,6 @@ onMounted(() => {
                   v-model="taskDescription"
                   class="w-full"
                   :class="{ 'opacity-50': isDescriptionLoading }"
-                  :disabled="isDescriptionLoading"
                   placeholder="Введите описание задачи"
                   rows="5"
                   autoResize
@@ -443,7 +555,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Исполнитель -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Исполнитель:</div>
         <div class="col-span-3">
@@ -460,7 +571,6 @@ onMounted(() => {
                   placeholder="Выберите исполнителя"
                   class="w-full"
                   :class="{ 'opacity-50': isExecutorLoading }"
-                  :disabled="isExecutorLoading"
                   @update:modelValue="updateExecutor(currentTask.id, $event)"
               >
                 <template #value="slotProps">
@@ -476,7 +586,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Временные показатели -->
       <div class="grid grid-cols-4 gap-4">
         <div :class="textSecondaryClass" class="transition-colors duration-300 font-medium">Время:</div>
         <div class="col-span-3">
@@ -486,16 +595,57 @@ onMounted(() => {
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Создана:</div>
                 <div>{{ formatDateTime(currentTask.creation_moment) }}</div>
               </div>
+
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Начата:</div>
-                <div>{{ formatDateTime(currentTask.start_moment) }}</div>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div :class="textSecondaryClass" class="transition-colors duration-300">Дедлайн:</div>
-                <div :class="{ 'text-red-400': isOverdue }">
-                  {{ formatDateTime(currentTask.deadline_moment) }}
+                <div class="relative">
+                  <div
+                      v-if="isStartMomentLoading"
+                      class="absolute inset-0 flex items-center justify-center z-10"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <DatePicker
+                      v-model="startDate"
+                      dateFormat="dd.mm.yy"
+                      placeholder="Выберите дату"
+                      :showIcon="true"
+                      :minDate="today"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': isStartMomentLoading }"
+                      :disabled="isStartMomentLoading"
+                      @update:modelValue="updateTaskStartMoment(currentTask.id, startDate)"
+                  />
                 </div>
               </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div :class="textSecondaryClass" class="transition-colors duration-300">Дедлайн:</div>
+                <div class="relative">
+                  <div
+                      v-if="isDeadlineMomentLoading"
+                      class="absolute inset-0 flex items-center justify-center z-10"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <DatePicker
+                      v-model="deadlineDate"
+                      dateFormat="dd.mm.yy"
+                      placeholder="Выберите дату"
+                      :showIcon="true"
+                      :minDate="today"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': isDeadlineMomentLoading  }"
+                      :disabled="isDeadlineMomentLoading"
+                      @update:modelValue="updateTaskDeadlineMoment(currentTask.id, deadlineDate)"
+                  />
+                </div>
+              </div>
+
               <div class="grid grid-cols-2 gap-2">
                 <div :class="textSecondaryClass" class="transition-colors duration-300">Завершена:</div>
                 <div>{{ formatDateTime(currentTask.end_moment) }}</div>
@@ -519,17 +669,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Сообщение об ошибке -->
     <div v-else-if="!isLoading && !currentTask" class="text-center py-8 text-red-500">
       Не удалось загрузить данные задачи
     </div>
 
-    <!-- Загрузка активных пользователей -->
     <div v-if="peopleStore.isLoading && !activeUsers.length" class="flex justify-center items-center py-4">
       <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
     </div>
 
-    <!-- Диалог редактирования плановой длительности -->
     <TaskPlannedDurationEditDialog
         v-model:visible="showDurationEditDialog"
         :task-id="currentTask?.id ?? null"
