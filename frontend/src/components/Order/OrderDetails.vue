@@ -3,7 +3,7 @@
 import OrderCommentBlock from '@/components/Order/OrderCommentBlock.vue';
 import OrderDateBlock from '@/components/Order/OrderDateBlock.vue';
 import OrderFinanceBlock from '@/components/Order/OrderFinanceBlock.vue';
-import TaskList from '@/components/TaskList.vue';
+import TaskList from '@/components/Task/TaskList.vue';
 
 // Определение props
 defineProps<{

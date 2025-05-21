@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useTasksStore } from '@/stores/storeTasks';
+import { useTasksStore } from '@/stores/storeTasks.ts';
 import { getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import BaseModal from '@/components/BaseModal.vue';
 import Select from 'primevue/select';
@@ -11,11 +11,11 @@ import 'primeicons/primeicons.css';
 import { useThemeStore } from '@/stores/storeTheme.ts';
 import { typeTask } from '@/types/typeTask.ts';
 import Textarea from 'primevue/textarea';
-import { usePeopleStore } from '@/stores/storePeople';
-import { formatFIO } from '@/utils/formatFIO';
+import { usePeopleStore } from '@/stores/storePeople.ts';
+import { formatFIO } from '@/utils/formatFIO.ts';
 import { storeToRefs } from 'pinia';
 import Button from 'primevue/button';
-import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue';
+import TaskPlannedDurationEditDialog from '@/components/Task/TaskPlannedDurationEditDialog.vue';
 import DatePicker from 'primevue/datepicker'; // Импортируем DatePicker
 
 interface Props {

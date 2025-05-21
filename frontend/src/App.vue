@@ -15,7 +15,7 @@ import TheHeader from "@/components/TheHeader.vue";
 import TheLogin from "@/components/TheLogin.vue";
 import TheOrders from "@/components/TheOrders.vue";
 import TheWarehouse from "@/components/TheWarehouse.vue";
-import TheTasks from "@/components/TheTasks.vue";
+import TheTasks from "@/components/Task/TheTasks.vue";
 import { setupThemeWatcher } from './utils/themeManager';
 
 const apiUrl = ref<string>('');

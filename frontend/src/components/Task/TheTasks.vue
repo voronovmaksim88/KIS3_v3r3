@@ -7,23 +7,23 @@ import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 // Сторежки (Pinia stores)
-import { useTasksStore } from '../stores/storeTasks';
-import { useOrdersStore } from '../stores/storeOrders';
-import { usePeopleStore } from '../stores/storePeople';
-import { useThemeStore } from '../stores/storeTheme';
+import { useTasksStore } from '@/stores/storeTasks.ts';
+import { useOrdersStore } from '@/stores/storeOrders.ts';
+import { usePeopleStore } from '@/stores/storePeople.ts';
+import { useThemeStore } from '@/stores/storeTheme.ts';
 
 // Композиционные хуки (Composables)
-import { useTableStyles } from '../composables/useTableStyles';
+import { useTableStyles } from '@/composables/useTableStyles.ts';
 import { useToast } from 'primevue/usetoast';
 
-// Ютила-функции
+// Вспомогательные функции
 import { getOrderStatusColor, getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import { formatFIO } from '@/utils/formatFIO.ts';
 
 // Диалоговые окна (модальные компоненты)
-import TaskNameEditDialog from '@/components/TaskNameEditDialog.vue';
-import TaskDescriptionEditDialog from '@/components/TaskDescriptionEditDialog.vue';
-import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог длительности
+import TaskNameEditDialog from '@/components/Task/TaskNameEditDialog.vue';
+import TaskDescriptionEditDialog from '@/components/Task/TaskDescriptionEditDialog.vue';
+import TaskPlannedDurationEditDialog from '@/components/Task/TaskPlannedDurationEditDialog.vue'; // Импортируем диалог длительности
 
 // Компоненты PrimeVue UI
 import Select from 'primevue/select';
@@ -32,7 +32,7 @@ import Paginator from 'primevue/paginator';
 import DatePicker from 'primevue/datepicker';
 
 // Дополнительные типы
-import { type TaskFilters } from '../stores/storeTasks';
+import { type TaskFilters } from '@/stores/storeTasks.ts';
 
 
 // Состояние загрузки для каждого DatePicker
@@ -119,6 +119,8 @@ const convertIsoToDate = (isoString: string | null): Date | null => {
 
 const startDates = ref<Record<number, Date | null>>({});
 const deadlineDates = ref<Record<number, Date | null>>({});
+
+
 
 // Синхронизация пагинации с хранилищем
 watch([currentPage, rowsPerPage], () => {

@@ -1,9 +1,9 @@
 <!-- src/components/TaskList.vue -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { typeTask } from '@/types/typeTask';
+import { typeTask } from '@/types/typeTask.ts';
 import TaskNode from './TaskNode.vue';
-import { useThemeStore } from "../stores/storeTheme";
+import { useThemeStore } from "@/stores/storeTheme.ts";
 
 interface Props {
   tasks: typeTask[];
