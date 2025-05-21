@@ -18,6 +18,9 @@ import TaskPlannedDurationEditDialog from '@/components/TaskPlannedDurationEditD
 import { formatFIO } from "@/utils/formatFIO.ts";
 import Paginator from 'primevue/paginator';
 import { computed } from 'vue';
+// Состояние для диалога изменения плановой длительности
+
+
 
 // Композитные компоненты
 const {
@@ -81,6 +84,13 @@ const selectedTaskDescription = ref<string | null>(null);
 // Состояние для диалога изменения плановой длительности
 const showDurationEditDialog = ref(false); // Новое состояние для диалога длительности
 const selectedTaskDuration = ref<string | null>(null); // Хранит planned_duration
+
+// Состояние для DatePicker
+const showStartDatePicker = ref(false);
+const showDeadlineDatePicker = ref(false);
+const selectedDate = ref<Date | null>(null);
+const editingTaskId = ref<number | null>(null);
+const isEditingStart = ref(false); // Флаг, чтобы различать редактирование start или deadline
 
 // Состояние пагинации
 const currentPage = ref(0); // Текущая страница (0-based для вычислений)
@@ -307,6 +317,67 @@ const handleDurationEditCancel = () => {
   showDurationEditDialog.value = false;
 };
 
+// Обработчики для открытия DatePicker
+const openStartDatePicker = (taskId: number, startMoment: string | null) => {
+  editingTaskId.value = taskId;
+  isEditingStart.value = true;
+  selectedDate.value = startMoment ? new Date(startMoment) : null;
+  showStartDatePicker.value = true;
+};
+
+const openDeadlineDatePicker = (taskId: number, deadlineMoment: string | null) => {
+  editingTaskId.value = taskId;
+  isEditingStart.value = false;
+  selectedDate.value = deadlineMoment ? new Date(deadlineMoment) : null;
+  showDeadlineDatePicker.value = true;
+};
+
+// Обработчик выбора даты
+const handleDateSelect = async () => {
+  if (editingTaskId.value && selectedDate.value) {
+    const isoDate = selectedDate.value.toISOString();
+    if (isEditingStart.value) {
+      await tasksStore.updateTaskStartMoment(editingTaskId.value, isoDate);
+      if (!tasksStore.error) {
+        toast.add({
+          severity: 'success',
+          summary: 'Успешно',
+          detail: `Дата начала задачи #${editingTaskId.value} обновлена`,
+          life: 3000,
+        });
+      }
+    } else {
+      await tasksStore.updateTaskDeadlineMoment(editingTaskId.value, isoDate);
+      if (!tasksStore.error) {
+        toast.add({
+          severity: 'success',
+          summary: 'Успешно',
+          detail: `Дедлайн задачи #${editingTaskId.value} обновлён`,
+          life: 3000,
+        });
+      }
+    }
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || `Не удалось обновить дату`,
+        life: 5000,
+      });
+    }
+    showStartDatePicker.value = false;
+    showDeadlineDatePicker.value = false;
+  }
+};
+
+// Обработчик отмены выбора даты
+const handleDateCancel = () => {
+  showStartDatePicker.value = false;
+  showDeadlineDatePicker.value = false;
+  selectedDate.value = null;
+  editingTaskId.value = null;
+};
+
 // Выполняется при монтировании компонента
 onMounted(() => {
   if (!tasksStore.tasks.length && !tasksStore.isLoading) {
@@ -329,6 +400,8 @@ onBeforeUnmount(() => {
   tasksStore.$patch({ tasks: [] });
 });
 </script>
+
+
 
 <template>
   <TaskNameEditDialog
