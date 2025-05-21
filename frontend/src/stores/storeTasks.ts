@@ -265,6 +265,38 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
 
+    // Метод для обновления времени начала задачи
+    async function updateTaskStartMoment(taskId: number, newStartMoment: string | null): Promise<void> {
+        if (newStartMoment && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/.test(newStartMoment)) {
+            error.value = 'Недопустимый формат даты. Используйте ISO 8601 (например, 2025-05-21T05:40:00Z)';
+            return;
+        }
+
+        await patchTask(
+            taskId,
+            `${taskId}/start_moment`,
+            newStartMoment, // Отправляем newStartMoment напрямую как строку или null
+            {},
+            'Время начала задачи успешно обновлено'
+        );
+    }
+
+    // Метод для обновления дедлайна задачи
+    async function updateTaskDeadlineMoment(taskId: number, newDeadlineMoment: string | null): Promise<void> {
+        if (newDeadlineMoment && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/.test(newDeadlineMoment)) {
+            error.value = 'Недопустимый формат даты. Используйте ISO 8601 (например, 2025-05-21T05:40:00Z)';
+            return;
+        }
+
+        await patchTask(
+            taskId,
+            `${taskId}/deadline_moment`,
+            newDeadlineMoment, // Отправляем newDeadlineMoment напрямую как строку или null
+            {},
+            'Дедлайн задачи успешно обновлён'
+        );
+    }
+
     // Метод для обновления страницы (пагинация)
     function updatePagination(newSkip: number, newLimit: number): void {
         skip.value = newSkip;
@@ -314,6 +346,8 @@ export const useTasksStore = defineStore('tasks', () => {
         resetFilters,
         clearCurrentTask,
         updateTaskExecutor,
-        updateTaskPlannedDuration
+        updateTaskPlannedDuration,
+        updateTaskStartMoment,
+        updateTaskDeadlineMoment
     };
 });
