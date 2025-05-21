@@ -121,6 +121,56 @@ const startDates = ref<Record<number, Date | null>>({});
 const deadlineDates = ref<Record<number, Date | null>>({});
 
 
+// Универсальная функция для обновления задачи с обработкой ошибок и заказов
+const updateTaskField = async <T>(
+    taskId: number,
+    updateFn: () => Promise<T>,
+    successMessage: string,
+    errorMessage: string
+) => {
+  try {
+    loadingStatuses.value[taskId] = true;
+    await updateFn();
+    if (tasksStore.error) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: tasksStore.error || errorMessage,
+        life: 5000,
+      });
+      return;
+    }
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: successMessage,
+      life: 3000,
+    });
+    const task = tasksStore.tasks.find(t => t.id === taskId);
+    if (task?.order?.serial) {
+      await ordersStore.fetchOrderDetail(task.order.serial);
+      if (ordersStore.error) {
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
+          life: 5000,
+        });
+      }
+    }
+  } catch (err) {
+    console.error(`Error updating task ${taskId}:`, err);
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: tasksStore.error || errorMessage,
+      life: 5000,
+    });
+  } finally {
+    loadingStatuses.value[taskId] = false;
+  }
+};
+
 
 // Синхронизация пагинации с хранилищем
 watch([currentPage, rowsPerPage], () => {
@@ -147,114 +197,22 @@ const statusOptions = [
 
 // Функция для обновления статуса задачи
 const updateStatus = async (taskId: number, statusId: number) => {
-  try {
-    // Устанавливаем флаг загрузки для задачи
-    loadingStatuses.value[taskId] = true;
-
-    await tasksStore.updateTaskStatus(taskId, statusId);
-
-    if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось изменить статус задачи #${taskId}`,
-        life: 5000,
-      });
-      return;
-    }
-
-    console.log(`Status for task ${taskId} updated successfully`);
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Статус задачи #${taskId} успешно изменен`,
-      life: 3000,
-    });
-
-    // Проверяем, есть ли связанный заказ
-    const task = tasksStore.tasks.find(t => t.id === taskId);
-    if (task?.order?.serial) {
-      await ordersStore.fetchOrderDetail(task.order.serial);
-      if (ordersStore.error) {
-        console.error('Error updating order:', ordersStore.error);
-        toast.add({
-          severity: 'error',
-          summary: 'Ошибка',
-          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-          life: 5000,
-        });
-      } else {
-        console.log(`Order ${task.order.serial} details updated successfully`);
-      }
-    }
-  } catch (err) {
-    console.error('Error updating task status:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось изменить статус задачи #${taskId}`,
-      life: 5000,
-    });
-  } finally {
-    // Сбрасываем флаг загрузки после завершения запроса
-    loadingStatuses.value[taskId] = false;
-  }
+  await updateTaskField(
+      taskId,
+      () => tasksStore.updateTaskStatus(taskId, statusId),
+      `Статус задачи #${taskId} успешно изменён`,
+      `Не удалось изменить статус задачи #${taskId}`
+  );
 };
 
 // Функция для обновления исполнителя задачи
 const updateExecutor = async (taskId: number, executorUuid: string | null) => {
-  try {
-    // Устанавливаем флаг загрузки для исполнителя
-    loadingExecutors.value[taskId] = true;
-
-    await tasksStore.updateTaskExecutor(taskId, executorUuid);
-
-    if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось изменить исполнителя задачи #${taskId}`,
-        life: 5000,
-      });
-      return;
-    }
-
-    console.log(`Executor for task ${taskId} updated successfully`);
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Исполнитель задачи #${taskId} успешно изменён`,
-      life: 3000,
-    });
-
-    // Проверяем, есть ли связанный заказ
-    const task = tasksStore.tasks.find(t => t.id === taskId);
-    if (task?.order?.serial) {
-      await ordersStore.fetchOrderDetail(task.order.serial);
-      if (ordersStore.error) {
-        console.error('Error updating order:', ordersStore.error);
-        toast.add({
-          severity: 'error',
-          summary: 'Ошибка',
-          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-          life: 5000,
-        });
-      } else {
-        console.log(`Order ${task.order.serial} details updated successfully`);
-      }
-    }
-  } catch (err) {
-    console.error('Error updating task executor:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось изменить исполнителя задачи #${taskId}`,
-      life: 5000,
-    });
-  } finally {
-    // Сбрасываем флаг загрузки
-    loadingExecutors.value[taskId] = false;
-  }
+  await updateTaskField(
+      taskId,
+      () => tasksStore.updateTaskExecutor(taskId, executorUuid),
+      `Исполнитель задачи #${taskId} успешно изменён`,
+      `Не удалось изменить исполнителя задачи #${taskId}`
+  );
 };
 
 
@@ -342,115 +300,38 @@ const handleDurationEditCancel = () => {
 
 // Функция для обновления времени начала задачи
 const updateTaskStartMoment = async (taskId: number, newStartMoment: Date | null) => {
-  try {
-    loadingStartMoments.value[taskId] = true;
-    const isoDate = newStartMoment
-        ? new Date(Date.UTC(
-            newStartMoment.getFullYear(),
-            newStartMoment.getMonth(),
-            newStartMoment.getDate()
-        )).toISOString()
-        : null;
-    await tasksStore.updateTaskStartMoment(taskId, isoDate);
-    if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось обновить дату начала задачи #${taskId}`,
-        life: 5000,
-      });
-      return;
-    }
-    console.log(`Start moment for task ${taskId} updated successfully`);
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Дата начала задачи #${taskId} обновлена`,
-      life: 3000,
-    });
-    const task = tasksStore.tasks.find(t => t.id === taskId);
-    if (task?.order?.serial) {
-      await ordersStore.fetchOrderDetail(task.order.serial);
-      if (ordersStore.error) {
-        console.error('Error updating order:', ordersStore.error);
-        toast.add({
-          severity: 'error',
-          summary: 'Ошибка',
-          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-          life: 5000,
-        });
-      } else {
-        console.log(`Order ${task.order.serial} details updated successfully`);
-      }
-    }
-  } catch (err) {
-    console.error('Error updating task start moment:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось обновить дату начала задачи #${taskId}`,
-      life: 5000,
-    });
-  } finally {
-    loadingStartMoments.value[taskId] = false;
-  }
+  const isoDate = newStartMoment
+      ? new Date(Date.UTC(
+          newStartMoment.getFullYear(),
+          newStartMoment.getMonth(),
+          newStartMoment.getDate()
+      )).toISOString()
+      : null;
+  await updateTaskField(
+      taskId,
+      () => tasksStore.updateTaskStartMoment(taskId, isoDate),
+      `Дата начала задачи #${taskId} обновлена`,
+      `Не удалось обновить дату начала задачи #${taskId}`
+  );
 };
 
 // Функция для обновления дедлайна задачи
 const updateTaskDeadlineMoment = async (taskId: number, newDeadlineMoment: Date | null) => {
-  try {
-    loadingDeadlineMoments.value[taskId] = true;
-    const isoDate = newDeadlineMoment
-        ? new Date(Date.UTC(
-            newDeadlineMoment.getFullYear(),
-            newDeadlineMoment.getMonth(),
-            newDeadlineMoment.getDate()
-        )).toISOString()
-        : null;
-    await tasksStore.updateTaskDeadlineMoment(taskId, isoDate);
-    if (tasksStore.error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: tasksStore.error || `Не удалось обновить дедлайн задачи #${taskId}`,
-        life: 5000,
-      });
-      return;
-    }
-    console.log(`Deadline moment for task ${taskId} updated successfully`);
-    toast.add({
-      severity: 'success',
-      summary: 'Успешно',
-      detail: `Дедлайн задачи #${taskId} обновлён`,
-      life: 3000,
-    });
-    const task = tasksStore.tasks.find(t => t.id === taskId);
-    if (task?.order?.serial) {
-      await ordersStore.fetchOrderDetail(task.order.serial);
-      if (ordersStore.error) {
-        console.error('Error updating order:', ordersStore.error);
-        toast.add({
-          severity: 'error',
-          summary: 'Ошибка',
-          detail: `Не удалось обновить данные заказа #${task.order.serial}`,
-          life: 5000,
-        });
-      } else {
-        console.log(`Order ${task.order.serial} details updated successfully`);
-      }
-    }
-  } catch (err) {
-    console.error('Error updating task deadline moment:', err);
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: tasksStore.error || `Не удалось обновить дедлайн задачи #${taskId}`,
-      life: 5000,
-    });
-  } finally {
-    loadingDeadlineMoments.value[taskId] = false;
-  }
+  const isoDate = newDeadlineMoment
+      ? new Date(Date.UTC(
+          newDeadlineMoment.getFullYear(),
+          newDeadlineMoment.getMonth(),
+          newDeadlineMoment.getDate()
+      )).toISOString()
+      : null;
+  await updateTaskField(
+      taskId,
+      () => tasksStore.updateTaskDeadlineMoment(taskId, isoDate),
+      `Дедлайн задачи #${taskId} обновлён`,
+      `Не удалось обновить дедлайн задачи #${taskId}`
+  );
 };
+
 
 // Минимальная допустимая дата (сегодня)
 const today = computed(() => {
