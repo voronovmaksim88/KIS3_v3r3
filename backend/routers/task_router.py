@@ -29,12 +29,14 @@ router = APIRouter(
 
 @router.get("/read", response_model=PaginatedTaskResponse)
 async def read_tasks(
-        skip: int = Query(0, ge=0, description="Number of items to skip"),
-        limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
-        status_id: Optional[int] = Query(None, description="Filter by task status ID"),
-        order_serial: Optional[str] = Query(None, description="Filter by order serial"),
-        executor_uuid: Optional[UUID] = Query(None, description="Filter by executor UUID"),
-        session: AsyncSession = Depends(get_async_db)
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Number of items to return per page"),
+    status_id: Optional[int] = Query(None, description="Filter by task status ID"),
+    order_serial: Optional[str] = Query(None, description="Filter by order serial"),
+    executor_uuid: Optional[UUID] = Query(None, description="Filter by executor UUID"),
+    sort_field: str = Query("id", description="Field to sort by: 'id', 'order', or 'status'", regex="^(id|order|status)$"),
+    sort_direction: str = Query("asc", description="Sort order: 'asc' for ascending, 'desc' for descending", regex="^(asc|desc)$"),
+    session: AsyncSession = Depends(get_async_db)
 ):
     """
     Получить список задач с пагинацией и опциональной фильтрацией.
@@ -42,9 +44,11 @@ async def read_tasks(
     Параметры:
     - skip: Количество задач, которые нужно пропустить для пагинации.
     - limit: Максимальное количество задач на странице.
-    - status_id: Фильтр по ID статуса задачи (например, 1 для "Не начата").
+    - status_id: Фильтр по ID статуса задачи (например, 1 для 'Не начата').
     - order_serial: Фильтр по серийному номеру заказа.
     - executor_uuid: Фильтр по UUID исполнителя.
+    - sort_field: Поле для сортировки: 'id' (по ID задачи), 'order' (по серийному номеру заказа), 'status' (по статусу задачи).
+    - sort_direction: Направление сортировки: 'asc' (по возрастанию, по умолчанию) или 'desc' (по убыванию).
 
     Возвращает:
     - PaginatedTaskResponse с общим количеством, параметрами пагинации и данными задач.
@@ -52,13 +56,14 @@ async def read_tasks(
     try:
         # Логируем входные параметры
         logger.info(f"Received request with skip={skip}, limit={limit}, status_id={status_id}, "
-                    f"order_serial={order_serial}, executor_uuid={executor_uuid}")
+                    f"order_serial={order_serial}, executor_uuid={executor_uuid}, "
+                    f"sort_field={sort_field}, sort_direction={sort_direction}")
 
         # Основной запрос с подгрузкой связанных моделей
         query = select(Task).options(
             selectinload(Task.payment_status),
             selectinload(Task.order),
-            selectinload(Task.executor)  # Теперь работает, так как отношение определено
+            selectinload(Task.executor)
         )
 
         # Запрос для подсчета общего количества задач
@@ -84,8 +89,13 @@ async def read_tasks(
         total = total_result.scalar_one_or_none() or 0
         logger.info(f"Total tasks found: {total}")
 
-        # Добавляем сортировку по id по умолчанию (по возрастанию)
-        query = query.order_by(Task.id.asc())
+        # Добавляем сортировку
+        if sort_field == "id":
+            query = query.order_by(Task.id.asc() if sort_direction == "asc" else Task.id.desc())
+        elif sort_field == "order":
+            query = query.order_by(Task.order_serial.asc() if sort_direction == "asc" else Task.order_serial.desc())
+        elif sort_field == "status":
+            query = query.order_by(Task.status_id.asc() if sort_direction == "asc" else Task.status_id.desc())
 
         # Применяем пагинацию
         query = query.offset(skip).limit(limit)
