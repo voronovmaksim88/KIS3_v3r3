@@ -264,7 +264,7 @@ const formatDurationToHours = (isoDuration: string | null): string => {
   if (!isoDuration) return '—';
   try {
     const match = isoDuration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/);
-    if (!match) return 'Неверный формат';
+    if (!match) return '---';
     const days = parseInt(match[1] || '0');
     const hours = parseInt(match[2] || '0');
     const minutes = parseInt(match[3] || '0');
@@ -439,22 +439,23 @@ onBeforeUnmount(() => {
     <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)">
       <table :class="tableBaseClass">
         <colgroup>
-          <col class="w-[3%]" />
-          <col class="w-[4%]" />
-          <col class="w-[12%]" />
-          <col class="w-[15%]" />
-          <col class="w-[8%]" />
-          <col class="w-[10%]" />
-          <col class="w-[5%]" />
-          <col class="w-[10%]" /> <!-- столбец дата создания -->
-          <col class="w-[10%]" />  <!-- столбец дата начала -->
-          <col class="w-[10%]" /> <!-- столбец дедлайн -->
-          <col class="w-[13%]" /> <!-- столбец завершена -->
+          <col class="w-[3%]" />    <!-- столбец id задачи -->
+          <col class="w-[4%]" />    <!-- столбец номер заказа -->
+          <col class="w-[10%]" />   <!-- имя задачи -->
+          <col class="w-[15%]" />   <!-- описание -->
+          <col class="w-[8%]" />    <!-- статус -->
+          <col class="w-[10%]" />   <!-- исполнитель -->
+          <col class="w-[5%]" />    <!-- время план -->
+          <col class="w-[5%]" />    <!-- время факт -->
+          <col class="w-[10%]" />   <!-- столбец дата создания -->
+          <col class="w-[10%]" />   <!-- столбец дата начала -->
+          <col class="w-[10%]" />   <!-- столбец дедлайн -->
+          <col class="w-[10%]" />   <!-- столбец завершена -->
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
         <tr :class="thClasses">
-          <th colspan="11" :class="tableHeaderRowClass">
+          <th colspan="12" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
               <div class="card flex flex-wrap justify-left gap-4 font-medium">
                 <!-- Чекбокс все/активные -->
@@ -514,6 +515,7 @@ onBeforeUnmount(() => {
           </th>
           <th :class="thClasses">Исполнитель</th>
           <th :class="thClasses">План</th>
+          <th :class="thClasses">Факт</th>
           <th :class="thClasses">Создана</th>
           <th :class="thClasses">Дата начала</th>
           <th :class="thClasses">Дедлайн</th>
@@ -647,6 +649,13 @@ onBeforeUnmount(() => {
                 @click="openDurationEditDialog(task.id, task.planned_duration)"
             >
               {{ formatDurationToHours(task.planned_duration) }}
+            </td>
+
+            <!-- Фактическая длительность -->
+            <td
+                :class="tdBaseTextClass"
+            >
+              {{ formatDurationToHours(task.actual_duration) }}
             </td>
 
 
