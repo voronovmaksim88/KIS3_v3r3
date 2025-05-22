@@ -34,7 +34,7 @@ import DatePicker from 'primevue/datepicker';
 
 // Дополнительные типы
 import { type TaskFilters } from '@/stores/storeTasks.ts';
-
+import { type TaskSortField } from '@/types/typeTask';
 
 // Состояние загрузки для каждого DatePicker
 const loadingStartMoments = ref<Record<number, boolean>>({});
@@ -79,6 +79,9 @@ const executorOptions = computed(() => {
 
 // Состояние загрузки для каждого исполнителя
 const loadingExecutors = ref<Record<number, boolean>>({});
+
+// Сортировка
+const { sortField, sortDirection } = storeToRefs(tasksStore);
 
 // Локальные фильтры для двусторонней привязки
 const localFilters = ref<TaskFilters>({
@@ -358,6 +361,25 @@ onMounted(() => {
   });
 });
 
+
+// Функция для определения иконки сортировки
+const getSortIcon = (field: TaskSortField): string => {
+  if (sortField.value === field) {
+    return sortDirection.value === 'asc' ? 'pi pi-sort-up' : 'pi pi-sort-down';
+  }
+  return 'pi pi-sort text-gray-400';
+};
+
+// Обработчик изменения сортировки
+const handleSortClick = (field: TaskSortField, event: MouseEvent) => {
+  if ((event.target as HTMLElement).closest('.p-selectbutton, .p-inputtext, .p-datepicker, .p-select')) {
+    console.log('Click originated from interactive element, preventing sort.');
+    return;
+  }
+  tasksStore.updateSort(field, sortField.value === field && sortDirection.value === 'asc' ? 'desc' : 'asc');
+};
+
+
 watch(() => tasksStore.tasks, (tasks) => {
   for (const task of tasks) {
     startDates.value[task.id] = convertIsoToDate(task.start_moment);
@@ -365,10 +387,13 @@ watch(() => tasksStore.tasks, (tasks) => {
   }
 }, { immediate: true });
 
+
 // Очистка задач при размонтировании компонента
 onBeforeUnmount(() => {
   tasksStore.$patch({ tasks: [] });
 });
+
+
 </script>
 
 
@@ -448,11 +473,45 @@ onBeforeUnmount(() => {
 
         <!-- Строка с заголовками таблицы -->
         <tr>
-          <th :class="thClasses">id</th>
-          <th :class="thClasses">Заказ</th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('id', event)"
+          >
+            <div class="flex items-center">
+              id
+              <span class="ml-1">
+                <i :class="getSortIcon('id')"></i>
+              </span>
+            </div>
+          </th>
+
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('order', event)"
+          >
+            <div class="flex items-center">
+              Заказ
+              <span class="ml-1">
+                <i :class="getSortIcon('order')"></i>
+              </span>
+            </div>
+          </th>
           <th :class="thClasses">Имя</th>
           <th :class="thClasses">Описание</th>
-          <th :class="thClasses">Статус</th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('status', event)"
+          >
+            <div class="flex items-center">
+              Статус
+              <span class="ml-1">
+                <i :class="getSortIcon('status')"></i>
+              </span>
+            </div>
+          </th>
           <th :class="thClasses">Исполнитель</th>
           <th :class="thClasses">План</th>
           <th :class="thClasses">Создана</th>
@@ -460,6 +519,7 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Дедлайн</th>
           <th :class="thClasses">Завершена</th>
         </tr>
+
         </thead>
 
         <tbody>
@@ -611,7 +671,7 @@ onBeforeUnmount(() => {
                     v-model="startDates[task.id]"
                     dateFormat="dd.mm.yy"
                     placeholder="Выберите дату"
-                    :showIcon="true"
+                    :showIcon="false"
                     :minDate="today"
                     class="w-full"
                     :class="{ 'opacity-50 pointer-events-none': loadingStartMoments[task.id] }"
@@ -635,7 +695,7 @@ onBeforeUnmount(() => {
                     v-model="deadlineDates[task.id]"
                     dateFormat="dd.mm.yy"
                     placeholder="Выберите дату"
-                    :showIcon="true"
+                    :showIcon="false"
                     :minDate="today"
                     class="w-full"
                     :class="{ 'opacity-50 pointer-events-none': loadingDeadlineMoments[task.id] }"
@@ -672,7 +732,7 @@ onBeforeUnmount(() => {
         <Paginator
             :rows="rowsPerPage"
             :totalRecords="tasksStore.total"
-            :rowsPerPageOptions="[10, 20, 50]"
+            :rowsPerPageOptions="[10, 20, 50, 100]"
             v-model:first="skip"
             template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             :class="[

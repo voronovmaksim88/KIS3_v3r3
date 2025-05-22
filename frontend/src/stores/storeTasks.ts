@@ -34,6 +34,8 @@ export const useTasksStore = defineStore('tasks', () => {
         order_serial: null,
         executor_uuid: null,
     });
+    const sortField: Ref<string> = ref('id'); // Поле сортировки: 'id', 'order', 'status'
+    const sortDirection: Ref<string> = ref('asc'); // Направление сортировки: 'asc', 'desc'
     const isLoading: Ref<boolean> = ref(false);
     const isCurrentTaskLoading: Ref<boolean> = ref(false);
     const error: Ref<string | null> = ref(null);
@@ -58,6 +60,22 @@ export const useTasksStore = defineStore('tasks', () => {
         }
     };
 
+    // Метод для обновления сортировки
+    function updateSort(newSortField: string, newSortDirection: string): void {
+        if (!['id', 'order', 'status'].includes(newSortField)) {
+            error.value = "Недопустимое поле сортировки. Должно быть 'id', 'order' или 'status'";
+            return;
+        }
+        if (!['asc', 'desc'].includes(newSortDirection)) {
+            error.value = "Недопустимое направление сортировки. Должно быть 'asc' или 'desc'";
+            return;
+        }
+        sortField.value = newSortField;
+        sortDirection.value = newSortDirection;
+        skip.value = 0; // Сбрасываем пагинацию при изменении сортировки
+        void fetchTasks();
+    }
+
     // Метод для получения задач
     async function fetchTasks(): Promise<void> {
         isLoading.value = true;
@@ -67,6 +85,8 @@ export const useTasksStore = defineStore('tasks', () => {
             const params: Record<string, any> = {
                 skip: skip.value,
                 limit: limit.value,
+                sort_field: sortField.value,
+                sort_direction: sortDirection.value,
             };
 
             // Добавляем фильтры, если они заданы
@@ -334,6 +354,8 @@ export const useTasksStore = defineStore('tasks', () => {
         skip,
         limit,
         filters,
+        sortField,
+        sortDirection,
         isLoading,
         isCurrentTaskLoading,
         error,
@@ -348,6 +370,7 @@ export const useTasksStore = defineStore('tasks', () => {
         updateTaskExecutor,
         updateTaskPlannedDuration,
         updateTaskStartMoment,
-        updateTaskDeadlineMoment
+        updateTaskDeadlineMoment,
+        updateSort,
     };
 });

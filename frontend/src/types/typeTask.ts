@@ -20,3 +20,5 @@ export interface typeTask {
     payment_status: { id: number; name: string } | null;
     executor: { uuid: string; name: string; surname: string } | null;
 }
+
+export type TaskSortField = 'id' | 'order' | 'status';
