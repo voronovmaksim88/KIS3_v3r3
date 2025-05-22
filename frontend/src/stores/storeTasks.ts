@@ -62,8 +62,8 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // Метод для обновления сортировки
     function updateSort(newSortField: string, newSortDirection: string): void {
-        if (!['id', 'order', 'status'].includes(newSortField)) {
-            error.value = "Недопустимое поле сортировки. Должно быть 'id', 'order' или 'status'";
+        if (!['id', 'order', 'status', 'planned_duration', 'actual_duration'].includes(newSortField)) {
+            error.value = "Недопустимое поле сортировки";
             return;
         }
         if (!['asc', 'desc'].includes(newSortDirection)) {

@@ -514,8 +514,30 @@ onBeforeUnmount(() => {
             </div>
           </th>
           <th :class="thClasses">Исполнитель</th>
-          <th :class="thClasses">План</th>
-          <th :class="thClasses">Факт</th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('planned_duration', event)"
+          >
+            <div class="flex items-center">
+              План
+              <span class="ml-1">
+                <i :class="getSortIcon('planned_duration')"></i>
+              </span>
+            </div>
+          </th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('actual_duration', event)"
+          >
+            <div class="flex items-center">
+              Факт
+              <span class="ml-1">
+                <i :class="getSortIcon('actual_duration')"></i>
+              </span>
+            </div>
+          </th>
           <th :class="thClasses">Создана</th>
           <th :class="thClasses">Дата начала</th>
           <th :class="thClasses">Дедлайн</th>
@@ -533,13 +555,24 @@ onBeforeUnmount(() => {
             <!-- номер заказа -->
             <td
                 class="px-4 py-2 cursor-pointer transition duration-300"
-                :class="[
+
+            >
+              <p
+                  :class="[
                     tdBaseTextClass,
                     { 'font-bold': task.order && [1, 2, 3, 4, 8].includes(task.order.status_id) }
                 ]"
-                :style="{ color: getOrderStatusColor(task.order?.status_id ?? null, currentTheme) }"
-            >
-              {{ task.order?.serial }}
+                  :style="{ color: getOrderStatusColor(task.order?.status_id ?? null, currentTheme) }"
+              >
+                {{ task.order?.serial }}
+              </p>
+
+              <p
+                  class="text-sm text-gray-400"
+              >
+                {{ task.order?.name }}
+              </p>
+
             </td>
 
             <!-- Имя задачи -->
@@ -724,7 +757,7 @@ onBeforeUnmount(() => {
 
         <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
           <td
-              colspan="10"
+              colspan="12"
               class="py-6 text-center text-lg text-gray-400 italic"
               :class="currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'"
           >
