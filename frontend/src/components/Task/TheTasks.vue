@@ -19,6 +19,7 @@ import { useToast } from 'primevue/usetoast';
 // Вспомогательные функции
 import { getOrderStatusColor, getTaskStatusColor } from '@/utils/getStatusColor.ts';
 import { formatFIO } from '@/utils/formatFIO.ts';
+import {formatLocalDateTime} from "@/utils/convertDateTime.ts";
 
 // Диалоговые окна (модальные компоненты)
 import TaskNameEditDialog from '@/components/Task/TaskNameEditDialog.vue';
@@ -413,21 +414,22 @@ onBeforeUnmount(() => {
     <div v-if="(!tasksStore.isLoading) || (tasksStore.isLoading && tasksStore.tasks.length > 0)">
       <table :class="tableBaseClass">
         <colgroup>
-          <col style="width: 3%" />
-          <col style="width: 4%" />
-          <col style="width: 12%" />
-          <col style="width: 15%" />
-          <col style="width: 8%" />
-          <col style="width: 10%" />
-          <col style="width: 5%" />
-          <col style="width: 10%" /> <!-- столбец для start_moment -->
-          <col style="width: 10%" /> <!-- столбец для deadline_moment -->
-          <col style="width: 23%" />
+          <col class="w-[3%]" />
+          <col class="w-[4%]" />
+          <col class="w-[12%]" />
+          <col class="w-[15%]" />
+          <col class="w-[8%]" />
+          <col class="w-[10%]" />
+          <col class="w-[5%]" />
+          <col class="w-[10%]" /> <!-- столбец дата создания -->
+          <col class="w-[10%]" />  <!-- столбец дата начала -->
+          <col class="w-[10%]" /> <!-- столбец дедлайн -->
+          <col class="w-[13%]" /> <!-- столбец завершена -->
         </colgroup>
         <thead>
         <!-- Строка управления на самом верху таблицы -->
         <tr :class="thClasses">
-          <th colspan="10" :class="tableHeaderRowClass">
+          <th colspan="11" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
               <div class="card flex flex-wrap justify-left gap-4 font-medium">
                 <!-- Чекбокс все/активные -->
@@ -453,9 +455,10 @@ onBeforeUnmount(() => {
           <th :class="thClasses">Статус</th>
           <th :class="thClasses">Исполнитель</th>
           <th :class="thClasses">План</th>
+          <th :class="thClasses">Создана</th>
           <th :class="thClasses">Дата начала</th>
           <th :class="thClasses">Дедлайн</th>
-          <th :class="thClasses"></th>
+          <th :class="thClasses">Завершена</th>
         </tr>
         </thead>
 
@@ -586,6 +589,13 @@ onBeforeUnmount(() => {
               {{ formatDurationToHours(task.planned_duration) }}
             </td>
 
+
+            <!-- Дата создания -->
+            <td :class="tdBaseTextClass" class="px-4 py-2">
+              {{ formatLocalDateTime(task.creation_moment) }}
+            </td>
+
+
             <!-- Дата начала -->
             <td :class="tdBaseTextClass" class="px-4 py-2">
               <div class="relative flex items-center">
@@ -634,8 +644,13 @@ onBeforeUnmount(() => {
               </div>
             </td>
 
-            <td :class="tdBaseTextClass"></td>
+            <!-- Дата завершения -->
+            <td :class="tdBaseTextClass" class="px-4 py-2">
+              {{ formatLocalDateTime(task.end_moment) }}
+            </td>
+
           </tr>
+
         </template>
 
         <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
