@@ -564,8 +564,30 @@ const groupedTasks = computed(() => {
             </div>
           </th>
           <th :class="thClasses">Создана</th>
-          <th :class="thClasses">Дата начала</th>
-          <th :class="thClasses">Дедлайн</th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('start_moment', event)"
+          >
+            <div class="flex items-center">
+              Дата начала
+              <span class="ml-1">
+                <i :class="getSortIcon('start_moment')"></i>
+              </span>
+            </div>
+          </th>
+          <th
+              :class="thClasses"
+              class="cursor-pointer"
+              @click="(event) => handleSortClick('deadline_moment', event)"
+          >
+            <div class="flex items-center">
+              Дедлайн
+              <span class="ml-1">
+                <i :class="getSortIcon('deadline_moment')"></i>
+              </span>
+            </div>
+          </th>
           <th :class="thClasses">Завершена</th>
         </tr>
 

@@ -21,4 +21,4 @@ export interface typeTask {
     executor: { uuid: string; name: string; surname: string } | null;
 }
 
-export type TaskSortField = 'id' | 'order' | 'status' | 'planned_duration' | 'actual_duration';
+export type TaskSortField = 'id' | 'order' | 'status' | 'planned_duration' | 'actual_duration' | 'start_moment' | 'deadline_moment';
