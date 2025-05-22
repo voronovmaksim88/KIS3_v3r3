@@ -16,6 +16,7 @@ from schemas.task_schem import TaskRead
 from datetime import timedelta
 from datetime import datetime
 from isodate import parse_duration
+from sqlalchemy import cast, Integer, desc, asc
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +27,14 @@ router = APIRouter(
     tags=["tasks"],
 )
 
+
+def get_task_order_sort(ascending=True):
+    direction_func = asc if ascending else desc
+    return [
+        direction_func(cast(func.substring(Task.order_serial, 9, 4), Integer)),  # Year
+        direction_func(cast(func.substring(Task.order_serial, 5, 2), Integer)),  # Month
+        direction_func(cast(func.substring(Task.order_serial, 1, 3), Integer))   # Number
+    ]
 
 @router.get("/read", response_model=PaginatedTaskResponse)
 async def read_tasks(
@@ -90,10 +99,16 @@ async def read_tasks(
         logger.info(f"Total tasks found: {total}")
 
         # Добавляем сортировку
+        is_ascending = sort_direction == "asc"
+
         if sort_field == "id":
             query = query.order_by(Task.id.asc() if sort_direction == "asc" else Task.id.desc())
         elif sort_field == "order":
-            query = query.order_by(Task.order_serial.asc() if sort_direction == "asc" else Task.order_serial.desc())
+            # Используем модифицированную функцию для сортировки по order_serial
+            sort_exprs = get_task_order_sort(
+                ascending=is_ascending,
+            )
+            query = query.order_by(*sort_exprs)
         elif sort_field == "status":
             query = query.order_by(Task.status_id.asc() if sort_direction == "asc" else Task.status_id.desc())
 

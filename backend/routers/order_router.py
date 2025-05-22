@@ -25,6 +25,7 @@ from datetime import datetime
 
 from fastapi import status
 from sqlalchemy.sql import and_
+from uuid import UUID
 
 router = APIRouter(
     prefix="/order",
@@ -67,6 +68,24 @@ async def generate_order_serial(
 
     # Форматируем номер заказа
     return f"{order_number:03d}-{current_month:02d}-{current_year}"
+
+
+def get_serial_sort_expressions(ascending_order=True):
+    """
+    Генерирует список выражений для сортировки по серийному номеру.
+
+    Параметры:
+    - ascending_order: bool - направление сортировки (по возрастанию, если True)
+
+    Возвращает:
+    - list[SQLAlchemy expression] - список выражений для сортировки
+    """
+    direction_func = asc if ascending_order else desc
+    return [
+        direction_func(cast(func.substring(Order.serial, 9, 4), Integer)),  # Year
+        direction_func(cast(func.substring(Order.serial, 5, 2), Integer)),  # Month
+        direction_func(cast(func.substring(Order.serial, 1, 3), Integer))  # Number in year
+    ]
 
 
 @router.get("/new-serial", response_model=OrderSerial)
@@ -207,14 +226,6 @@ async def read_orders(
     # Применяем сортировку
     is_ascending_direction = sort_direction.lower() != "desc"
 
-    def get_serial_sort_expressions(ascending_order=True):
-        direction_func = asc if ascending_order else desc
-        return [
-            direction_func(cast(func.substring(Order.serial, 9, 4), Integer)),  # Year
-            direction_func(cast(func.substring(Order.serial, 5, 2), Integer)),  # Month
-            direction_func(cast(func.substring(Order.serial, 1, 3), Integer))  # Number in year
-        ]
-
     if sort_field.lower() == "priority":
         secondary_serial_sort_asc = get_serial_sort_expressions(ascending_order=True)
         if is_ascending_direction:
@@ -337,10 +348,10 @@ async def get_order_detail(
 
     # 2. Обработка комментариев для получения данных автора
     formatted_comments = []
-    if order.comments: # order.comments это список объектов CommentModel
+    if order.comments:  # order.comments это список объектов CommentModel
         author_uuids = {comment.person_uuid for comment in order.comments if comment.person_uuid}
 
-        authors_details_map = {} # Будет хранить {uuid: PersonSchema_object}
+        authors_details_map = {}  # Будет хранить {uuid: PersonSchema_object}
         if author_uuids:
             person_query = select(Person).where(Person.uuid.in_(author_uuids))
             person_results = await session.execute(person_query)
@@ -348,7 +359,7 @@ async def get_order_detail(
                 # Преобразуем модель SQLAlchemy Person в PersonSchema
                 authors_details_map[person_model.uuid] = PersonSchema.model_validate(person_model)
 
-        for comment_model in order.comments: # comment_model это экземпляр модели SQLAlchemy Comment
+        for comment_model in order.comments:  # comment_model это экземпляр модели SQLAlchemy Comment
             person_schema_obj = None
             if comment_model.person_uuid:
                 person_schema_obj = authors_details_map.get(comment_model.person_uuid)
@@ -356,39 +367,39 @@ async def get_order_detail(
             # Если автор не найден, но UUID есть, создаем заглушку,
             # так как OrderCommentSchema.person ожидает PersonSchema, а не Optional[PersonSchema]
             if not person_schema_obj and comment_model.person_uuid:
-                print(f"Warning: Author details for UUID {comment_model.person_uuid} not found. Using fallback for comment ID {comment_model.id}.")
+                print(
+                    f"Warning: Author details for UUID {comment_model.person_uuid} not found. Using fallback for comment ID {comment_model.id}.")
                 # Создаем объект PersonSchema с неизвестными данными
                 # Убедитесь, что поля uuid, name, surname являются обязательными в PersonSchema
                 # или предоставьте значения по умолчанию в PersonSchema
                 # Для примера, если PersonSchema требует эти поля:
                 person_schema_obj = PersonSchema(
-                    uuid=comment_model.person_uuid, # или какое-то специальное UUID для неизвестного
+                    uuid=comment_model.person_uuid,  # или какое-то специальное UUID для неизвестного
                     name="Автор",
                     surname="Неизвестен"
                     # ... другие обязательные поля PersonSchema со значениями по умолчанию
                 )
             elif not person_schema_obj and not comment_model.person_uuid:
-                 # Если UUID автора в комментарии изначально отсутствует (None)
-                 # и OrderCommentSchema.person не Optional, это тоже проблема.
-                 # На данный момент, схема OrderCommentSchema.person: PersonSchema, так что она не опциональна.
-                 # Это значит, что в БД в таблице комментариев person_uuid не должен быть NULL,
-                 # или OrderCommentSchema.person должен быть Optional[PersonSchema]
-                 # Для данного случая, создадим заглушку
+                # Если UUID автора в комментарии изначально отсутствует (None)
+                # и OrderCommentSchema.person не Optional, это тоже проблема.
+                # На данный момент, схема OrderCommentSchema.person: PersonSchema, так что она не опциональна.
+                # Это значит, что в БД в таблице комментариев person_uuid не должен быть NULL,
+                # или OrderCommentSchema.person должен быть Optional[PersonSchema]
+                # Для данного случая, создадим заглушку
                 print(f"Warning: Author UUID is NULL for comment ID {comment_model.id}. Using fallback.")
                 person_schema_obj = PersonSchema(
-                    uuid="00000000-0000-0000-0000-000000000000", # Пример UUID
+                    uuid=UUID("00000000-0000-0000-0000-000000000000"),
                     name="Автор",
                     surname="Не указан"
                     # ... другие обязательные поля
                 )
-
 
             formatted_comments.append(
                 OrderCommentSchema(
                     id=comment_model.id,
                     moment_of_creation=comment_model.moment_of_creation,
                     text=comment_model.text,
-                    person=person_schema_obj # Передаем объект PersonSchema
+                    person=person_schema_obj  # Передаем объект PersonSchema
                 )
             )
 
