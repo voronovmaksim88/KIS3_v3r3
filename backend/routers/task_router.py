@@ -43,8 +43,11 @@ async def read_tasks(
     status_id: Optional[int] = Query(None, description="Filter by task status ID"),
     order_serial: Optional[str] = Query(None, description="Filter by order serial"),
     executor_uuid: Optional[UUID] = Query(None, description="Filter by executor UUID"),
-    sort_field: str = Query("id", description="Field to sort by: 'id', 'order', or 'status'", regex="^(id|order|status)$"),
-    sort_direction: str = Query("asc", description="Sort order: 'asc' for ascending, 'desc' for descending", regex="^(asc|desc)$"),
+    sort_field: str = Query("id",
+                            description="Field to sort by: 'id', 'order', 'status', 'planned_duration', 'actual_duration'",
+                            regex="^(id|order|status|planned_duration|actual_duration)$"),
+    sort_direction: str = Query("asc", description="Sort order: 'asc' for ascending, 'desc' for descending",
+                                regex="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -56,7 +59,10 @@ async def read_tasks(
     - status_id: Фильтр по ID статуса задачи (например, 1 для 'Не начата').
     - order_serial: Фильтр по серийному номеру заказа.
     - executor_uuid: Фильтр по UUID исполнителя.
-    - sort_field: Поле для сортировки: 'id' (по ID задачи), 'order' (по серийному номеру заказа), 'status' (по статусу задачи).
+    - sort_field: Поле для сортировки: 'id' (по ID задачи), 'order' (по серийному номеру заказа),
+        'status' (по статусу задачи),
+        'planned_duration' (по плановой длительности),
+        'actual_duration' (по фактической длительности).
     - sort_direction: Направление сортировки: 'asc' (по возрастанию, по умолчанию) или 'desc' (по убыванию).
 
     Возвращает:
@@ -100,17 +106,17 @@ async def read_tasks(
 
         # Добавляем сортировку
         is_ascending = sort_direction == "asc"
-
         if sort_field == "id":
-            query = query.order_by(Task.id.asc() if sort_direction == "asc" else Task.id.desc())
+            query = query.order_by(Task.id.asc() if is_ascending else Task.id.desc())
         elif sort_field == "order":
-            # Используем модифицированную функцию для сортировки по order_serial
-            sort_exprs = get_task_order_sort(
-                ascending=is_ascending,
-            )
+            sort_exprs = get_task_order_sort(ascending=is_ascending)
             query = query.order_by(*sort_exprs)
         elif sort_field == "status":
-            query = query.order_by(Task.status_id.asc() if sort_direction == "asc" else Task.status_id.desc())
+            query = query.order_by(Task.status_id.asc() if is_ascending else Task.status_id.desc())
+        elif sort_field == "planned_duration":
+            query = query.order_by(Task.planned_duration.asc() if is_ascending else Task.planned_duration.desc())
+        elif sort_field == "actual_duration":
+            query = query.order_by(Task.actual_duration.asc() if is_ascending else Task.actual_duration.desc())
 
         # Применяем пагинацию
         query = query.offset(skip).limit(limit)
