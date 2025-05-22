@@ -44,8 +44,10 @@ async def read_tasks(
     order_serial: Optional[str] = Query(None, description="Filter by order serial"),
     executor_uuid: Optional[UUID] = Query(None, description="Filter by executor UUID"),
     sort_field: str = Query("id",
-                            description="Field to sort by: 'id', 'order', 'status', 'planned_duration', 'actual_duration'",
-                            regex="^(id|order|status|planned_duration|actual_duration)$"),
+                            description="Field to sort by: 'id', 'order', 'status',"
+                                        " 'planned_duration', 'actual_duration',"
+                                        " 'start_moment', 'deadline_moment'",
+                            regex="^(id|order|status|planned_duration|actual_duration|start_moment|deadline_moment)$"),
     sort_direction: str = Query("asc", description="Sort order: 'asc' for ascending, 'desc' for descending",
                                 regex="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_db)
@@ -62,7 +64,9 @@ async def read_tasks(
     - sort_field: Поле для сортировки: 'id' (по ID задачи), 'order' (по серийному номеру заказа),
         'status' (по статусу задачи),
         'planned_duration' (по плановой длительности),
-        'actual_duration' (по фактической длительности).
+        'actual_duration' (по фактической длительности),
+        'start_moment' (по дате начала),
+        'deadline_moment' (по дедлайну).
     - sort_direction: Направление сортировки: 'asc' (по возрастанию, по умолчанию) или 'desc' (по убыванию).
 
     Возвращает:
@@ -117,6 +121,10 @@ async def read_tasks(
             query = query.order_by(Task.planned_duration.asc() if is_ascending else Task.planned_duration.desc())
         elif sort_field == "actual_duration":
             query = query.order_by(Task.actual_duration.asc() if is_ascending else Task.actual_duration.desc())
+        elif sort_field == "start_moment":
+            query = query.order_by(Task.start_moment.asc() if is_ascending else Task.start_moment.desc())
+        elif sort_field == "deadline_moment":
+            query = query.order_by(Task.deadline_moment.asc() if is_ascending else Task.deadline_moment.desc())
 
         # Применяем пагинацию
         query = query.offset(skip).limit(limit)
