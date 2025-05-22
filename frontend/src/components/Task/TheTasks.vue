@@ -393,7 +393,32 @@ onBeforeUnmount(() => {
   tasksStore.$patch({ tasks: [] });
 });
 
+// Группировка задач по order.serial для объединения ячеек
+const groupedTasks = computed(() => {
+  const groups: { orderSerial: string | null; tasks: typeof tasksStore.tasks; rowspan: number }[] = [];
+  const tasks = tasksStore.tasks;
 
+  // Создаём словарь для группировки
+  const taskGroups = new Map<string | null, typeof tasksStore.tasks>();
+  for (const task of tasks) {
+    const serial = task.order?.serial ?? null;
+    if (!taskGroups.has(serial)) {
+      taskGroups.set(serial, []);
+    }
+    taskGroups.get(serial)!.push(task);
+  }
+
+  // Преобразуем словарь в массив групп
+  taskGroups.forEach((groupTasks, serial) => {
+    groups.push({
+      orderSerial: serial,
+      tasks: groupTasks,
+      rowspan: groupTasks.length,
+    });
+  });
+
+  return groups;
+});
 </script>
 
 
@@ -547,212 +572,201 @@ onBeforeUnmount(() => {
         </thead>
 
         <tbody>
-        <template v-for="task in tasksStore.tasks" :key="task.id">
-          <tr :class="trBaseClass">
-            <!-- id задачи -->
-            <td :class="tdBaseTextClass">{{ task.id }}</td>
+        <template v-for="group in groupedTasks" :key="group.orderSerial || 'null-' + group.tasks[0].id">
+          <template v-for="(task, taskIndex) in group.tasks" :key="task.id">
+            <tr :class="trBaseClass">
+              <!-- id задачи -->
+              <td :class="tdBaseTextClass">{{ task.id }}</td>
 
-            <!-- номер заказа -->
-            <td
-                class="px-4 py-2 cursor-pointer transition duration-300"
+              <!-- номер заказа (рендерится только для первой задачи в группе) -->
+              <td
+                  v-if="taskIndex === 0"
+                  class="px-4 py-2 cursor-pointer transition duration-300"
+                  :rowspan="group.rowspan"
+              >
+                <p
+                    :class="[
+                      tdBaseTextClass,
+                      { 'font-bold': task.order && [1, 2, 3, 4, 8].includes(task.order.status_id) }
+                    ]"
+                    :style="{ color: getOrderStatusColor(task.order?.status_id ?? null, currentTheme) }"
+                >
+                  {{ task.order?.serial }}
+                </p>
+                <p class="text-sm text-gray-400">
+                  {{ task.order?.name }}
+                </p>
+              </td>
 
-            >
-              <p
+              <!-- Имя задачи -->
+              <td
+                  :class="tdBaseTextClass"
+                  class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
+                  @click="openNameEditDialog(task.id, task.name)"
+              >
+                {{ task.name }}
+              </td>
+
+              <!-- Описание задачи -->
+              <td
                   :class="[
-                    tdBaseTextClass,
-                    { 'font-bold': task.order && [1, 2, 3, 4, 8].includes(task.order.status_id) }
-                ]"
-                  :style="{ color: getOrderStatusColor(task.order?.status_id ?? null, currentTheme) }"
+                      tdBaseTextClass,
+                      'cursor-pointer',
+                      'hover:bg-gray-500',
+                      'dark:hover:bg-gray-700',
+                      {'text-sm text-gray-400 italic': !task.description}
+                  ]"
+                  @click="openDescriptionEditDialog(task.id, task.description)"
               >
-                {{ task.order?.serial }}
-              </p>
+                {{ task.description || 'Нет описания' }}
+              </td>
 
-              <p
-                  class="text-sm text-gray-400"
-              >
-                {{ task.order?.name }}
-              </p>
-
-            </td>
-
-            <!-- Имя задачи -->
-            <td
-                :class="tdBaseTextClass"
-                class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
-                @click="openNameEditDialog(task.id, task.name)"
-            >
-              {{ task.name }}
-            </td>
-
-            <!-- Описание задачи -->
-            <td
-                :class="[
-                    tdBaseTextClass,
-                    'cursor-pointer',
-                    'hover:bg-gray-500',
-                    'dark:hover:bg-gray-700',
-                    {'text-sm text-gray-400 italic': !task.description}
-                ]"
-                @click="openDescriptionEditDialog(task.id, task.description)"
-            >
-              {{ task.description || 'Нет описания' }}
-            </td>
-
-            <!-- Статус задачи -->
-            <td class="px-4 py-2" :class="tdBaseTextClass">
-              <div class="relative flex items-center">
-                <!-- Спиннер загрузки -->
-                <div
-                    v-if="loadingStatuses[task.id]"
-                    class="absolute inset-0 flex items-center justify-center"
-                >
+              <!-- Статус задачи -->
+              <td class="px-4 py-2" :class="tdBaseTextClass">
+                <div class="relative flex items-center">
                   <div
-                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
-                  ></div>
-                </div>
-                <!-- Селектор статуса -->
-                <Select
-                    :modelValue="task.status_id"
-                    :options="statusOptions"
-                    optionValue="value"
-                    optionLabel="label"
-                    placeholder="Выберите статус"
-                    class="w-full"
-                    :class="{ 'opacity-50 pointer-events-none': loadingStatuses[task.id] }"
-                    @update:modelValue="updateStatus(task.id, $event)"
-                >
-                  <template #value="slotProps">
-                    <span
-                        v-if="slotProps.value"
-                        :style="{ color: getTaskStatusColor(slotProps.value) }"
-                    >
-                      {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
-                    </span>
-                    <span v-else>{{ slotProps.placeholder }}</span>
-                  </template>
-                  <template #option="slotProps">
-                    <div class="flex items-center">
-                      <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
-                        {{ slotProps.option.label }}
+                      v-if="loadingStatuses[task.id]"
+                      class="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <Select
+                      :modelValue="task.status_id"
+                      :options="statusOptions"
+                      optionValue="value"
+                      optionLabel="label"
+                      placeholder="Выберите статус"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': loadingStatuses[task.id] }"
+                      @update:modelValue="updateStatus(task.id, $event)"
+                  >
+                    <template #value="slotProps">
+                      <span
+                          v-if="slotProps.value"
+                          :style="{ color: getTaskStatusColor(slotProps.value) }"
+                      >
+                        {{ statusOptions.find(opt => opt.value === slotProps.value)?.label || 'Неизвестный статус' }}
                       </span>
-                    </div>
-                  </template>
-                </Select>
-              </div>
-            </td>
-
-            <!-- Выбор исполнителя -->
-            <td class="px-4 py-2" :class="tdBaseTextClass">
-              <div class="relative flex items-center">
-                <!-- Спиннер загрузки -->
-                <div
-                    v-if="loadingExecutors[task.id]"
-                    class="absolute inset-0 flex items-center justify-center"
-                >
-                  <div
-                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
-                  ></div>
+                      <span v-else>{{ slotProps.placeholder }}</span>
+                    </template>
+                    <template #option="slotProps">
+                      <div class="flex items-center">
+                        <span :style="{ color: getTaskStatusColor(slotProps.option.value) }">
+                          {{ slotProps.option.label }}
+                        </span>
+                      </div>
+                    </template>
+                  </Select>
                 </div>
-                <!-- Селектор исполнителя -->
-                <Select
-                    :modelValue="task.executor?.uuid"
-                    :options="executorOptions"
-                    optionValue="value"
-                    optionLabel="label"
-                    placeholder="Выберите исполнителя"
-                    class="w-full"
-                    :class="{ 'opacity-50 pointer-events-none': loadingExecutors[task.id] }"
-                    @update:modelValue="updateExecutor(task.id, $event)"
-                >
-                  <template #value="slotProps">
-                    <span v-if="slotProps.value">
-                      {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
-                    (task.executor ? formatFIO(task.executor) : 'Неизвестный исполнитель') }}
-                    </span>
-                    <span v-else>{{ slotProps.placeholder }}</span>
-                  </template>
-                </Select>
-              </div>
-            </td>
+              </td>
 
-            <!-- Плановая длительность -->
-            <td
-                :class="tdBaseTextClass"
-                class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
-                @click="openDurationEditDialog(task.id, task.planned_duration)"
-            >
-              {{ formatDurationToHours(task.planned_duration) }}
-            </td>
-
-            <!-- Фактическая длительность -->
-            <td
-                :class="tdBaseTextClass"
-            >
-              {{ formatDurationToHours(task.actual_duration) }}
-            </td>
-
-
-            <!-- Дата создания -->
-            <td :class="tdBaseTextClass" class="px-4 py-2">
-              {{ formatLocalDateTime(task.creation_moment) }}
-            </td>
-
-
-            <!-- Дата начала -->
-            <td :class="tdBaseTextClass" class="px-4 py-2">
-              <div class="relative flex items-center">
-                <div
-                    v-if="loadingStartMoments[task.id]"
-                    class="absolute inset-0 flex items-center justify-center"
-                >
+              <!-- Выбор исполнителя -->
+              <td class="px-4 py-2" :class="tdBaseTextClass">
+                <div class="relative flex items-center">
                   <div
-                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
-                  ></div>
+                      v-if="loadingExecutors[task.id]"
+                      class="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <Select
+                      :modelValue="task.executor?.uuid"
+                      :options="executorOptions"
+                      optionValue="value"
+                      optionLabel="label"
+                      placeholder="Выберите исполнителя"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': loadingExecutors[task.id] }"
+                      @update:modelValue="updateExecutor(task.id, $event)"
+                  >
+                    <template #value="slotProps">
+                      <span v-if="slotProps.value">
+                        {{ executorOptions.find(opt => opt.value === slotProps.value)?.label ||
+                      (task.executor ? formatFIO(task.executor) : 'Неизвестный исполнитель') }}
+                      </span>
+                      <span v-else>{{ slotProps.placeholder }}</span>
+                    </template>
+                  </Select>
                 </div>
-                <DatePicker
-                    v-model="startDates[task.id]"
-                    dateFormat="dd.mm.yy"
-                    placeholder="Выберите дату"
-                    :showIcon="false"
-                    :minDate="today"
-                    class="w-full"
-                    :class="{ 'opacity-50 pointer-events-none': loadingStartMoments[task.id] }"
-                    @update:modelValue="updateTaskStartMoment(task.id, startDates[task.id])"
-                />
-              </div>
-            </td>
+              </td>
 
-            <!-- Дедлайн -->
-            <td :class="tdBaseTextClass" class="px-4 py-2">
-              <div class="relative flex items-center">
-                <div
-                    v-if="loadingDeadlineMoments[task.id]"
-                    class="absolute inset-0 flex items-center justify-center"
-                >
+              <!-- Плановая длительность -->
+              <td
+                  :class="tdBaseTextClass"
+                  class="cursor-pointer hover:bg-gray-500 dark:hover:bg-gray-700"
+                  @click="openDurationEditDialog(task.id, task.planned_duration)"
+              >
+                {{ formatDurationToHours(task.planned_duration) }}
+              </td>
+
+              <!-- Фактическая длительность -->
+              <td :class="tdBaseTextClass">
+                {{ formatDurationToHours(task.actual_duration) }}
+              </td>
+
+              <!-- Дата создания -->
+              <td :class="tdBaseTextClass" class="px-4 py-2">
+                {{ formatLocalDateTime(task.creation_moment) }}
+              </td>
+
+              <!-- Дата начала -->
+              <td :class="tdBaseTextClass" class="px-4 py-2">
+                <div class="relative flex items-center">
                   <div
-                      class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
-                  ></div>
+                      v-if="loadingStartMoments[task.id]"
+                      class="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <DatePicker
+                      v-model="startDates[task.id]"
+                      dateFormat="dd.mm.yy"
+                      placeholder="Выберите дату"
+                      :showIcon="false"
+                      :minDate="today"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': loadingStartMoments[task.id] }"
+                      @update:modelValue="updateTaskStartMoment(task.id, startDates[task.id])"
+                  />
                 </div>
-                <DatePicker
-                    v-model="deadlineDates[task.id]"
-                    dateFormat="dd.mm.yy"
-                    placeholder="Выберите дату"
-                    :showIcon="false"
-                    :minDate="today"
-                    class="w-full"
-                    :class="{ 'opacity-50 pointer-events-none': loadingDeadlineMoments[task.id] }"
-                    @update:modelValue="updateTaskDeadlineMoment(task.id, deadlineDates[task.id])"
-                />
-              </div>
-            </td>
+              </td>
 
-            <!-- Дата завершения -->
-            <td :class="tdBaseTextClass" class="px-4 py-2">
-              {{ formatLocalDateTime(task.end_moment) }}
-            </td>
+              <!-- Дедлайн -->
+              <td :class="tdBaseTextClass" class="px-4 py-2">
+                <div class="relative flex items-center">
+                  <div
+                      v-if="loadingDeadlineMoments[task.id]"
+                      class="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"
+                    ></div>
+                  </div>
+                  <DatePicker
+                      v-model="deadlineDates[task.id]"
+                      dateFormat="dd.mm.yy"
+                      placeholder="Выберите дату"
+                      :showIcon="false"
+                      :minDate="today"
+                      class="w-full"
+                      :class="{ 'opacity-50 pointer-events-none': loadingDeadlineMoments[task.id] }"
+                      @update:modelValue="updateTaskDeadlineMoment(task.id, deadlineDates[task.id])"
+                  />
+                </div>
+              </td>
 
-          </tr>
-
+              <!-- Дата завершения -->
+              <td :class="tdBaseTextClass" class="px-4 py-2">
+                {{ formatLocalDateTime(task.end_moment) }}
+              </td>
+            </tr>
+          </template>
         </template>
 
         <tr v-if="tasksStore.tasks.length === 0 && !tasksStore.isLoading && !tasksStore.error">
@@ -764,9 +778,6 @@ onBeforeUnmount(() => {
             Задач не найдено
           </td>
         </tr>
-
-
-
         </tbody>
       </table>
 
