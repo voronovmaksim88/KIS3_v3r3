@@ -11,6 +11,7 @@ import { useTasksStore } from '@/stores/storeTasks.ts';
 import { useOrdersStore } from '@/stores/storeOrders.ts';
 import { usePeopleStore } from '@/stores/storePeople.ts';
 import { useThemeStore } from '@/stores/storeTheme.ts';
+import { useTasksTableStore } from '@/stores/storeTaskTable'
 
 // Композиционные хуки (Composables)
 import { useTableStyles } from '@/composables/useTableStyles.ts';
@@ -35,6 +36,7 @@ import DatePicker from 'primevue/datepicker';
 // Дополнительные типы
 import { type TaskFilters } from '@/stores/storeTasks.ts';
 import { type TaskSortField } from '@/types/typeTask';
+import Checkbox from 'primevue/checkbox';
 
 // Состояние загрузки для каждого DatePicker
 const loadingStartMoments = ref<Record<number, boolean>>({});
@@ -52,19 +54,24 @@ const {
 // Всплывающие уведомления
 const toast = useToast();
 
-// Store темы
+// Стор темы
 const themeStore = useThemeStore();
 const { theme: currentTheme } = storeToRefs(themeStore);
 
-// Store задач
+// Стор задач
 const tasksStore = useTasksStore();
 
-// Store заказов
+// Стор заказов
 const ordersStore = useOrdersStore();
 
-// Store людей
+// Стор людей
 const peopleStore = usePeopleStore();
 const { activeUsers } = storeToRefs(peopleStore); // Получаем активных пользователей
+
+// Стор для таблицы задач
+const tasksTableStore = useTasksTableStore(); // Получаем экземпляр стора таблицы
+const {showEndedTasks} = storeToRefs(tasksTableStore);
+
 
 // Опции для исполнителей
 const executorOptions = computed(() => {
@@ -88,6 +95,7 @@ const localFilters = ref<TaskFilters>({
   status_id: null,
   order_serial: null,
   executor_uuid: null,
+  show_ended: true,
 });
 
 // Состояние для диалога изменения имени задачи
@@ -482,11 +490,18 @@ const groupedTasks = computed(() => {
         <tr :class="thClasses">
           <th colspan="12" :class="tableHeaderRowClass">
             <div class="px-1 py-1 flex justify-between items-center">
-              <div class="card flex flex-wrap justify-left gap-4 font-medium">
-                <!-- Чекбокс все/активные -->
-                <div class="flex items-center gap-2">
+              <div class="card flex flex-wrap justify-left gap-8 font-medium">
+
+                <!-- Чекбокс для отображения завершённых задач -->
+                <div class="flex items-center gap-1">
                   <label class="text-middle">Завершённые</label>
+                  <Checkbox
+                      v-model="showEndedTasks"
+                      :binary="true"
+                      @update:modelValue="tasksStore.updateFilters({ show_ended: $event })"
+                  />
                 </div>
+
                 <!-- Чекбокс поиска -->
                 <div class="flex items-center gap-2">
                   <label>Поиск</label>

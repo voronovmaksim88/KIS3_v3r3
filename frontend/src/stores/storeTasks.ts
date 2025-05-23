@@ -4,7 +4,8 @@ import axios, { AxiosError } from 'axios';
 import type { Ref } from 'vue';
 import { getApiUrl } from '../utils/apiUrlHelper';
 import { typeTask } from "@/types/typeTask.ts";
-import { useOrdersStore } from '@/stores/storeOrders'; // Импортируем useOrdersStore
+import { useOrdersStore } from '@/stores/storeOrders';
+import { useTasksTableStore } from '@/stores/storeTaskTable';
 
 // Интерфейс для ответа пагинации
 interface PaginatedTaskResponse {
@@ -19,6 +20,7 @@ export interface TaskFilters {
     status_id: number | null;
     order_serial: string | null;
     executor_uuid: string | null;
+    show_ended: boolean;
 }
 
 // Определение Pinia store
@@ -33,6 +35,7 @@ export const useTasksStore = defineStore('tasks', () => {
         status_id: null,
         order_serial: null,
         executor_uuid: null,
+        show_ended: true,
     });
     const sortField: Ref<string> = ref('id'); // Поле сортировки: 'id', 'order', 'status'
     const sortDirection: Ref<string> = ref('asc'); // Направление сортировки: 'asc', 'desc'
@@ -42,6 +45,9 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // Получаем доступ к ordersStore
     const ordersStore = useOrdersStore();
+
+    // Получаем доступ к tasksTableStore
+    const tasksTableStore = useTasksTableStore();
 
     // Вспомогательная функция для обновления currentOrderDetail.tasks
     const updateOrderDetailTask = (updatedTask: typeTask) => {
@@ -87,6 +93,7 @@ export const useTasksStore = defineStore('tasks', () => {
                 limit: limit.value,
                 sort_field: sortField.value,
                 sort_direction: sortDirection.value,
+                show_ended: tasksTableStore.showEndedTasks,
             };
 
             // Добавляем фильтры, если они заданы
@@ -325,19 +332,25 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
     // Метод для обновления фильтров
+// Метод для обновления фильтров
     function updateFilters(newFilters: Partial<TaskFilters>): void {
         filters.value = { ...filters.value, ...newFilters };
+        if (newFilters.show_ended !== undefined) {
+            tasksTableStore.showEndedTasks = newFilters.show_ended;
+        }
         skip.value = 0; // Сбрасываем пагинацию при изменении фильтров
         void fetchTasks();
     }
 
-    // Метод для сброса фильтров
+// Метод для сброса фильтров
     function resetFilters(): void {
         filters.value = {
             status_id: null,
             order_serial: null,
             executor_uuid: null,
+            show_ended: true,
         };
+        tasksTableStore.showEndedTasks = false; // Сбрасываем в UI
         skip.value = 0;
         void fetchTasks();
     }
