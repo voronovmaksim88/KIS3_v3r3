@@ -43,6 +43,7 @@ async def read_tasks(
     status_id: Optional[int] = Query(None, description="Filter by task status ID"),
     order_serial: Optional[str] = Query(None, description="Filter by order serial"),
     executor_uuid: Optional[UUID] = Query(None, description="Filter by executor UUID"),
+    show_ended: bool = Query(True, description="Show completed tasks (status 4, 5)"),
     sort_field: str = Query("id",
                             description="Field to sort by: 'id', 'order', 'status',"
                                         " 'planned_duration', 'actual_duration',"
@@ -61,6 +62,7 @@ async def read_tasks(
     - status_id: Фильтр по ID статуса задачи (например, 1 для 'Не начата').
     - order_serial: Фильтр по серийному номеру заказа.
     - executor_uuid: Фильтр по UUID исполнителя.
+    - show_ended: Показывать завершенные задачи (статусы 4, 5).
     - sort_field: Поле для сортировки: 'id' (по ID задачи), 'order' (по серийному номеру заказа),
         'status' (по статусу задачи),
         'planned_duration' (по плановой длительности),
@@ -76,7 +78,7 @@ async def read_tasks(
         # Логируем входные параметры
         logger.info(f"Received request with skip={skip}, limit={limit}, status_id={status_id}, "
                     f"order_serial={order_serial}, executor_uuid={executor_uuid}, "
-                    f"sort_field={sort_field}, sort_direction={sort_direction}")
+                    f"show_ended={show_ended}, sort_field={sort_field}, sort_direction={sort_direction}")
 
         # Основной запрос с подгрузкой связанных моделей
         query = select(Task).options(
@@ -94,6 +96,9 @@ async def read_tasks(
                 raise HTTPException(status_code=400, detail="Invalid status_id. Must be between 1 and 5.")
             query = query.where(Task.status_id == status_id)
             count_query = count_query.where(Task.status_id == status_id)
+        elif not show_ended:
+            query = query.where(Task.status_id.notin_([4, 5]))
+            count_query = count_query.where(Task.status_id.notin_([4, 5]))
 
         if order_serial is not None:
             query = query.where(Task.order_serial == order_serial)
