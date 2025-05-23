@@ -3,16 +3,16 @@
 import {onMounted, ref, computed} from 'vue';
 import {watch} from 'vue';
 import {storeToRefs} from 'pinia';
-import {useOrdersStore} from '../stores/storeOrders';
+import {useOrdersStore} from '@/stores/storeOrders';
 import {useOrdersTableStore} from '@/stores/storeOrdersTable';
 import {getOrderStatusColor} from "@/utils/getStatusColor.ts";
-import { useTableStyles } from '../composables/useTableStyles'; // для установки стилей
+import { useTableStyles } from '@/composables/useTableStyles'; // для установки стилей
 
 // Импортируем типы
 import {OrderSortField} from '@/types/typeOrder'; //  для сортировки
 
 // импорт других сторов
-import {useThemeStore} from '../stores/storeTheme';
+import {useThemeStore} from '@/stores/storeTheme';
 import {useCounterpartyStore} from '@/stores/storeCounterparty';
 import {useWorksStore} from "@/stores/storeWorks";
 

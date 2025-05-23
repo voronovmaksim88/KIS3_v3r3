@@ -49,14 +49,8 @@ defineEmits<{
             :theme="theme"
         />
         <div class="flex flex-col gap-4">
-          <OrderDateBlock
-              :order="orderDetail || {}"
-              :theme="theme"
-              :detailBlockClass="detailBlockClass"
-              :detailHeaderClass="detailHeaderClass"
-              :tdBaseTextClass="tdBaseTextClass"
-              :order-serial="orderSerial"
-          />
+          <OrderDateBlock/>
+
           <OrderFinanceBlock
               :finance="orderDetail || {}"
               :theme="theme"

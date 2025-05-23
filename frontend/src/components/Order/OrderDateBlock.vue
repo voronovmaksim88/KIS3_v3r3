@@ -1,27 +1,23 @@
 <!-- src/components/OrderDateBlock.vue -->
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
+import { computed, ref, watch } from 'vue';
 import DatePicker from 'primevue/datepicker';
-import {useOrdersStore} from '@/stores/storeOrders.ts';
-import {useToast} from 'primevue/usetoast';
-import {formatLocalDateTime} from "@/utils/convertDateTime.ts";
+import { useOrdersStore } from '@/stores/storeOrders.ts';
+import { useToast } from 'primevue/usetoast';
+import { formatLocalDateTime } from "@/utils/convertDateTime.ts";
+import { useTableStyles } from '@/composables/useTableStyles'; // для установки стилей
+import {useThemeStore} from '@/stores/storeTheme';
+import {storeToRefs} from "pinia";
 
-// Определение типа входных данных для компонента
-interface DateData {
-  start_moment?: string | null;
-  deadline_moment?: string | null;
-  end_moment?: string | null;
-  serial?: string; // Добавляем serial для идентификации заказа при обновлении
-}
 
-// Определяем пропсы для компонента через деструктуризацию
-const props = defineProps<{
-  order: DateData | null;
-  theme: string; // Не используется в текущей логике, но оставлен
-  detailBlockClass: string;
-  detailHeaderClass: string;
-  tdBaseTextClass: string;
-}>();
+// Store темы
+const themeStore = useThemeStore();
+const {theme: currentTheme} = storeToRefs(themeStore);
+
+// композитные компоненты
+const {
+  tdBaseTextClass,
+} = useTableStyles();
 
 // Добавляем emit событие для обновления даты дедлайна
 const emit = defineEmits(['updateDeadline']);
@@ -30,17 +26,31 @@ const emit = defineEmits(['updateDeadline']);
 const ordersStore = useOrdersStore();
 const toast = useToast();
 
-// Временная переменная для хранения новой даты дедлайна при редактировании
 // Переменная для хранения даты дедлайна
-const tempDeadline = ref<Date | null>(props.order?.deadline_moment ? new Date(props.order.deadline_moment) : null);
-// Устанавливаем начальное время на 00:00:00 если есть дата
+const tempDeadline = ref<Date | null>(
+    ordersStore.currentOrderDetail?.deadline_moment
+        ? new Date(ordersStore.currentOrderDetail.deadline_moment)
+        : null
+);
 if (tempDeadline.value) {
   tempDeadline.value.setHours(0, 0, 0, 0);
 }
 
+// Синхронизация tempDeadline с currentOrderDetail.deadline_moment
+watch(
+    () => ordersStore.currentOrderDetail?.deadline_moment,
+    (newDeadline) => {
+      tempDeadline.value = newDeadline ? new Date(newDeadline) : null;
+      if (tempDeadline.value) {
+        tempDeadline.value.setHours(0, 0, 0, 0);
+      }
+    },
+    { immediate: true }
+);
+
 // Функция для сохранения изменений в БД
-const saveDeadline = async () => {
-  if (!props.order?.serial) {
+const saveDeadline = async (newValue: Date | null) => {
+  if (!ordersStore.currentOrderDetail?.serial) {
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
@@ -53,31 +63,30 @@ const saveDeadline = async () => {
   try {
     // Формируем объект для обновления заказа
     const orderData = {
-      deadline_moment: tempDeadline.value
+      deadline_moment: newValue
           ? new Date(Date.UTC(
-              tempDeadline.value.getFullYear(),
-              tempDeadline.value.getMonth(),
-              tempDeadline.value.getDate()
+              newValue.getFullYear(),
+              newValue.getMonth(),
+              newValue.getDate()
           )).toISOString()
           : null
     };
 
     // Вызываем метод обновления из хранилища
-    await ordersStore.updateOrder(props.order.serial, orderData);
+    await ordersStore.updateOrder(ordersStore.currentOrderDetail.serial, orderData);
 
     // Эмитим событие для родительского компонента (если нужно)
-    emit('updateDeadline', tempDeadline.value ? tempDeadline.value.toISOString() : null);
+    emit('updateDeadline', newValue ? newValue.toISOString() : null);
 
     // Показываем уведомление об успешном обновлении
     toast.add({
       severity: 'success',
       summary: 'Успешно',
-      detail: tempDeadline.value
-          ? `Дедлайн обновлен на ${formatLocalDateTime(tempDeadline.value.toISOString(), false)}`
+      detail: newValue
+          ? `Дедлайн обновлен на ${formatLocalDateTime(newValue.toISOString(), false)}`
           : 'Дедлайн удален',
       life: 3000
     });
-
   } catch (error) {
     // Показываем сообщение об ошибке
     toast.add({
@@ -89,19 +98,15 @@ const saveDeadline = async () => {
   }
 };
 
-// Вызываем saveDeadline при изменении tempDeadline
-watch(tempDeadline, (newValue, oldValue) => {
-  // Проверяем, что значение действительно изменилось
-  if (newValue !== oldValue && (
-      // Проверяем случаи: было null стало Date, было Date стало null,
-      // или даты разные (сравниваем по timestamp)
-      (newValue === null && oldValue !== null) ||
-      (newValue !== null && oldValue === null) ||
-      (newValue !== null && oldValue !== null && newValue.getTime() !== oldValue.getTime())
-  )) {
-    saveDeadline();
+// Обработчик события DatePicker
+const handleDateUpdate = (value: Date | Date[] | (Date | null)[] | null | undefined) => {
+  if (value instanceof Date || value === null) {
+    saveDeadline(value); // Вызываем асинхронную функцию
+  } else {
+    console.warn('Unsupported DatePicker value:', value);
+    // Можно добавить toast или другую обработку ошибки
   }
-}, {deep: true});
+};
 
 // Минимальная допустимая дата (сегодня)
 const today = computed(() => {
@@ -110,12 +115,12 @@ const today = computed(() => {
   return now;
 });
 
-
+// Рассчитывает разницу между двумя датами в годах, месяцах и днях
 interface DateDifference {
   years: number;
   months: number;
   days: number;
-  totalDays: number; // Общее количество дней для определения знака и случая "сегодня"
+  totalDays: number;
 }
 
 /**
@@ -216,12 +221,11 @@ function formatRelativeTimeDetailed(diff: DateDifference): string {
   return parts.join(', ');
 }
 
-// --- Обновленные вычисляемые свойства ---
-
+// Вычисляемые свойства для времени
 const timeSinceCreation = computed((): DateDifference | null => {
-  if (!props.order?.start_moment) return null;
+  if (!ordersStore.currentOrderDetail?.start_moment) return null;
   try {
-    const startDate = new Date(props.order.start_moment);
+    const startDate = new Date(ordersStore.currentOrderDetail.start_moment);
     const now = new Date();
     if (isNaN(startDate.getTime())) return null;
     return calculateDateDifference(startDate, now);
@@ -231,21 +235,21 @@ const timeSinceCreation = computed((): DateDifference | null => {
 });
 
 const timeUntilDeadline = computed((): DateDifference | null => {
-  if (!props.order?.deadline_moment) return null;
+  if (!ordersStore.currentOrderDetail?.deadline_moment) return null;
   try {
-    const deadlineDate = new Date(props.order.deadline_moment);
+    const deadlineDate = new Date(ordersStore.currentOrderDetail.deadline_moment);
     const now = new Date();
     if (isNaN(deadlineDate.getTime())) return null;
-    return calculateDateDifference(now, deadlineDate); // Порядок важен для totalDays
+    return calculateDateDifference(now, deadlineDate);
   } catch {
     return null;
   }
 });
 
 const timeSinceCompletion = computed((): DateDifference | null => {
-  if (!props.order?.end_moment) return null;
+  if (!ordersStore.currentOrderDetail?.end_moment) return null;
   try {
-    const endDate = new Date(props.order.end_moment);
+    const endDate = new Date(ordersStore.currentOrderDetail.end_moment);
     const now = new Date();
     if (isNaN(endDate.getTime())) return null;
     return calculateDateDifference(endDate, now);
@@ -254,7 +258,7 @@ const timeSinceCompletion = computed((): DateDifference | null => {
   }
 });
 
-// Проверка, просрочен ли дедлайн (используем totalDays из timeUntilDeadline)
+// Проверка, просрочен ли дедлайн
 const isDeadlineOverdue = computed(() => {
   // totalDays отрицательный, если deadlineDate < now
   return timeUntilDeadline.value !== null && timeUntilDeadline.value.totalDays < 0;
@@ -262,11 +266,27 @@ const isDeadlineOverdue = computed(() => {
 
 // Состояние загрузки из хранилища
 const isLoading = computed(() => ordersStore.isLoading);
+
+// Классы для основных блоков внутри деталей (Комментарии, Даты, Финансы, Задачи)
+const detailBlockClass = computed(() => {
+  const base = 'border rounded-md p-3 h-full transition-colors duration-300 ease-in-out';
+  return currentTheme.value === 'dark'
+      ? `${base} bg-gray-800 border-gray-600`
+      : `${base} bg-white border-gray-200 shadow-sm`;
+});
+
+// Классы для заголовков (<h4>) внутри блоков деталей
+const detailHeaderClass = computed(() => {
+  const base = 'font-semibold mb-2';
+  return currentTheme.value === 'dark'
+      ? `${base} text-white`
+      : `${base} text-gray-800`;
+});
 </script>
 
 <template>
   <div :class="detailBlockClass">
-    <Toast/>
+    <Toast />
     <h4 :class="detailHeaderClass">Даты</h4>
 
     <table class="w-full border-none table-fixed border-collapse">
@@ -276,10 +296,12 @@ const isLoading = computed(() => ordersStore.isLoading);
           создан:
         </td>
         <td :class="tdBaseTextClass" class="text-left align-top">
-          {{ formatLocalDateTime(props.order?.start_moment, false) || 'не определено' }}
+          {{ formatLocalDateTime(ordersStore.currentOrderDetail?.start_moment, false) || 'не определено' }}
         </td>
-        <td v-if="timeSinceCreation && (timeSinceCreation.years > 0 || timeSinceCreation.months > 0 || timeSinceCreation.days > 0)"
-            class="text-xs text-gray-500 pl-2 text-left align-top">
+        <td
+            v-if="timeSinceCreation && (timeSinceCreation.years > 0 || timeSinceCreation.months > 0 || timeSinceCreation.days > 0)"
+            class="text-xs text-gray-500 pl-2 text-left align-top"
+        >
           ({{ formatRelativeTimeDetailed(timeSinceCreation) }} назад)
         </td>
         <td v-else class="w-px"></td>
@@ -290,8 +312,7 @@ const isLoading = computed(() => ordersStore.isLoading);
           дедлайн:
         </td>
         <td :class="[tdBaseTextClass, 'text-left align-top']">
-
-          <div class="relative">
+          <div class="relative" v-if="ordersStore.currentOrderDetail?.serial">
             <DatePicker
                 v-model="tempDeadline"
                 dateFormat="dd.mm.yy"
@@ -300,14 +321,14 @@ const isLoading = computed(() => ordersStore.isLoading);
                 :minDate="today"
                 class="deadline-picker"
                 :disabled="isLoading"
+                @update:modelValue="handleDateUpdate"
             />
             <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
               <i class="pi pi-spinner pi-spin text-blue-500"></i>
             </div>
           </div>
-
+          <span v-else class="text-gray-400 italic">Не установлен</span>
         </td>
-
         <td
             v-if="timeUntilDeadline !== null"
             class="text-xs pl-2 text-left align-top"
@@ -326,15 +347,17 @@ const isLoading = computed(() => ordersStore.isLoading);
         <td v-else class="w-px"></td>
       </tr>
 
-      <tr v-if="props.order?.end_moment">
+      <tr v-if="ordersStore.currentOrderDetail?.end_moment">
         <td :class="tdBaseTextClass" class="text-left pr-2 align-top">
           завершён:
         </td>
         <td :class="tdBaseTextClass" class="text-left align-top">
-          {{ formatLocalDateTime(props.order?.end_moment, false) || 'не определено' }}
+          {{ formatLocalDateTime(ordersStore.currentOrderDetail?.end_moment, false) || 'не определено' }}
         </td>
-        <td v-if="timeSinceCompletion && (timeSinceCompletion.years > 0 || timeSinceCompletion.months > 0 || timeSinceCompletion.days > 0)"
-            class="text-xs text-gray-500 pl-2 text-left align-top">
+        <td
+            v-if="timeSinceCompletion && (timeSinceCompletion.years > 0 || timeSinceCompletion.months > 0 || timeSinceCompletion.days > 0)"
+            class="text-xs text-gray-500 pl-2 text-left align-top"
+        >
           ({{ formatRelativeTimeDetailed(timeSinceCompletion) }} назад)
         </td>
         <td v-else class="w-px"></td>
@@ -361,7 +384,6 @@ table td {
   border: none;
   vertical-align: middle; /* Выравнивание по верху ячейки */
 }
-
 
 table td:nth-child(1) {
   width: 20%;
