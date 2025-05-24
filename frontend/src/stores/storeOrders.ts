@@ -25,11 +25,12 @@ export const useOrdersStore = defineStore('orders', () => {
     const error = ref<string | null>(null);             // Общая ошибка стора (можно разделить при необходимости)
 
     // --- Флаги загрузки ---
-    const isLoading = ref(false);                   // Основной флаг загрузки (для fetchOrders, create, update)
-    const isDeadlineLoading = ref(false);           // Флаг обновления дедлайна по заказу
-    const isDetailLoading = ref(false);             // Флаг загрузки деталей заказа (fetchOrderDetail)
-    const isNewSerialLoading = ref(false);          // Загрузка нового серийного номера
-    const isSerialsLoading = ref(false);            // Загрузка списка серийных номеров (fetchOrderSerials)
+    const isLoading = ref(false);           // Основной флаг загрузки (для fetchOrders, create, update)
+    const isDeadlineLoading = ref(false);   // Флаг обновления дедлайна по заказу
+    const isDetailLoading = ref(false);     // Флаг загрузки деталей заказа (fetchOrderDetail)
+    const isNewSerialLoading = ref(false);  // Загрузка нового серийного номера
+    const isSerialsLoading = ref(false);    // Загрузка списка серийных номеров (fetchOrderSerials)
+    const isFinInfoLoading = ref(false);                       // Загрузка данных о финансах по заказу
 
 
     // === Словарь статусов заказов ===
@@ -195,6 +196,12 @@ export const useOrdersStore = defineStore('orders', () => {
         if (orderData.deadline_moment != null) {
             isDeadlineLoading.value = true;
         }
+
+        if (Object.keys(orderData).some(key => key.includes('cost') || key.includes('paid') || key.includes('debt'))) {
+            isFinInfoLoading.value = true;
+        }
+
+
         isLoading.value = true;
         error.value = null;
         try {
@@ -214,9 +221,6 @@ export const useOrdersStore = defineStore('orders', () => {
                 };
             }
 
-            // Всегда обновляем список заказов в таблице, чтобы изменения были видны
-            await fetchOrders();
-
             return response.data; // Возвращаем ответ от PATCH
         } catch (err) {
             handleAxiosError(err, `Failed to update order ${serial}`);
@@ -224,6 +228,7 @@ export const useOrdersStore = defineStore('orders', () => {
         } finally {
             isLoading.value = false;
             isDeadlineLoading.value = false;
+            isFinInfoLoading.value = false;
         }
     };
 
@@ -278,6 +283,7 @@ export const useOrdersStore = defineStore('orders', () => {
         isNewSerialLoading, //
         isSerialsLoading,   //
         isDeadlineLoading,  // флаг обновления дедлайна
+        isFinInfoLoading,   // флаг обновления финансов
 
         // --- Действия (Actions) ---
         fetchOrders, fetchOrderDetail, fetchNewOrderSerial, fetchOrderSerials,

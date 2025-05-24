@@ -54,7 +54,7 @@ const ordersStore = useOrdersStore();
 const toast = useToast();
 
 // Состояние загрузки из стора
-const isLoading = computed(() => ordersStore.isLoading);
+const isFinInfoLoading = computed(() => ordersStore.isFinInfoLoading);
 
 // Создаем единую структуру для финансовых данных
 const financeData = ref<FinanceDataStructure>({
@@ -94,7 +94,7 @@ const categories: Array<{key: CategoryKey; label: string; colorClass: string}> =
   { key: 'debt', label: 'Нам должны', colorClass: 'text-green-400' }
 ];
 
-// Вотчер для отслеживания изменений
+// наблюдатель для отслеживания изменений
 watch(
     financeData,
     () => {
@@ -232,8 +232,9 @@ watch(() => props.finance, (newFinance) => {
               <span class="whitespace-nowrap">{{ cat.label }}</span>
               <div class="cursor-pointer flex items-center justify-center"
                    @click="handlePaidChange(cat.key, !financeData[cat.key].paid)">
-                <i class="pi" :class="financeData[cat.key].paid ?
+                <i v-if="!isFinInfoLoading" class="pi" :class="financeData[cat.key].paid ?
                      'pi-check-circle text-green-500' : 'pi-times-circle text-gray-400'"></i>
+                <i v-else class="pi pi-spinner pi-spin text-blue-500"></i>
               </div>
             </div>
           </td>
@@ -242,11 +243,11 @@ watch(() => props.finance, (newFinance) => {
                 v-model="financeData[cat.key].plan"
                 :class="{'line-through opacity-60': financeData[cat.key].paid}"
                 :inputClass="`${cat.colorClass} text-right w-full min-w-[90px] px-2 py-1`"
-                :disabled="isLoading || financeData[cat.key].paid"
+                :disabled="isFinInfoLoading || financeData[cat.key].paid"
                 :min="0"
                 :title="financeData[cat.key].paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
+            <div v-if="isFinInfoLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
               <i class="pi pi-spinner pi-spin text-blue-500"></i>
             </div>
           </td>
@@ -255,11 +256,11 @@ watch(() => props.finance, (newFinance) => {
                 v-model="financeData[cat.key].fact"
                 :class="{'line-through opacity-60': financeData[cat.key].paid}"
                 :inputClass="`${cat.colorClass} text-right w-full min-w-[90px] px-2 py-1`"
-                :disabled="isLoading || financeData[cat.key].paid"
+                :disabled="isFinInfoLoading || financeData[cat.key].paid"
                 :min="0"
                 :title="financeData[cat.key].paid ? 'Оплачено, редактирование заблокировано' : ''"
             />
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
+            <div v-if="isFinInfoLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
               <i class="pi pi-spinner pi-spin text-blue-500"></i>
             </div>
           </td>
@@ -272,14 +273,14 @@ watch(() => props.finance, (newFinance) => {
       <Button
           label="Отмена"
           severity="secondary"
-          :disabled="!hasChanges || isLoading"
+          :disabled="!hasChanges || isFinInfoLoading"
           @click="cancelChanges"
           raised
       />
       <Button
           label="ОК"
           severity="primary"
-          :disabled="!hasChanges || isLoading"
+          :disabled="!hasChanges || isFinInfoLoading"
           @click="saveChanges"
           raised
       />
