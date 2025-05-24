@@ -5,7 +5,7 @@ import {ref, computed} from 'vue';
 // Импортируем все необходимые типы
 import {
     typeOrderSerial,
-    typeOrderRead,
+    typeOrderBase,
     typePaginatedOrderResponse,
     typeOrderDetail,
     typeOrderCreate,
@@ -18,7 +18,7 @@ export const useOrdersStore = defineStore('orders', () => {
     // === Состояние ===
     // Состояние, специфичное для данных заказов, НЕ для отображения таблицы
     const orderSerials = ref<typeOrderSerial[]>([]); // Список только серийных номеров (если нужен)
-    const orders = ref<typeOrderRead[]>([]);         // Полные данные заказов для текущей страницы
+    const orders = ref<typeOrderBase[]>([]);         // Полные данные заказов для текущей страницы
     const totalOrders = ref<number>(0);             // Общее количество заказов для пагинации
     const currentOrder = ref<typeOrderDetail | null>(null); // Детали выбранного заказа
     const newOrderSerial = ref<string>('');             // Сгенерированный серийный номер для нового заказа
@@ -26,10 +26,11 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // --- Флаги загрузки ---
     const isLoading = ref(false);                   // Основной флаг загрузки (для fetchOrders, create, update)
-    const isDeadlineLoading = ref(false);         // Флаг обновления дедлайна по заказу
+    const isDeadlineLoading = ref(false);           // Флаг обновления дедлайна по заказу
     const isDetailLoading = ref(false);             // Флаг загрузки деталей заказа (fetchOrderDetail)
     const isNewSerialLoading = ref(false);          // Загрузка нового серийного номера
     const isSerialsLoading = ref(false);            // Загрузка списка серийных номеров (fetchOrderSerials)
+
 
     // === Словарь статусов заказов ===
     const orderStatuses = {
@@ -169,11 +170,11 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // --- Действия связанные с изменением данных (CRUD) ---
 
-    const createOrder = async (orderData: typeOrderCreate): Promise<typeOrderRead | null> => {
+    const createOrder = async (orderData: typeOrderCreate): Promise<typeOrderBase | null> => {
         isLoading.value = true; // Используем основной флаг
         error.value = null;
         try {
-            const response = await axios.post<typeOrderRead>(
+            const response = await axios.post<typeOrderBase>(
                 `${getApiUrl()}order/create`, orderData, {withCredentials: true}
             );
             // После создания успешно, обновляем список заказов.
@@ -188,27 +189,35 @@ export const useOrdersStore = defineStore('orders', () => {
         }
     };
 
-    const updateOrder = async (serial: string, orderData: typeOrderEdit): Promise<typeOrderRead | null> => {
+
+    // Обновление заказа
+    const updateOrder = async (serial: string, orderData: typeOrderEdit): Promise<typeOrderBase | null> => {
         if (orderData.deadline_moment != null) {
             isDeadlineLoading.value = true;
         }
         isLoading.value = true;
         error.value = null;
         try {
-            const response = await axios.patch<typeOrderRead>( // Ответ от PATCH все еще typeOrderRead
-                `${getApiUrl()}order/edit/${serial}`, {order_data: orderData}, {withCredentials: true}
+            const response = await axios.patch<typeOrderBase>(
+                `${getApiUrl()}order/edit/${serial}`,
+                { order_data: orderData },
+                { withCredentials: true }
             );
 
-            // Если текущий открытый заказ - это тот, что мы обновили, перезапрашиваем его детали
+            // Если текущий открытый заказ - это тот, что мы обновили, обновляем currentOrder
             if (currentOrder.value?.serial === serial) {
-                await fetchOrderDetail(serial); // <--- Запрашиваем полные детали заново
+                // Обновляем только изменённые поля, сохраняя существующие данные
+                currentOrder.value = {
+                    ...currentOrder.value, // Сохраняем существующие поля typeOrderDetail
+                    ...response.data,      // Перезаписываем поля из typeOrderRead
+                    deadline_moment: orderData.deadline_moment ?? currentOrder.value.deadline_moment // Явно обновляем deadline_moment
+                };
             }
 
-            // Всегда обновляем список заказов в таблице, чтобы изменения были видны.
-            // fetchOrders сам прочитает текущее состояние таблицы из storeOrdersTable.
+            // Всегда обновляем список заказов в таблице, чтобы изменения были видны
             await fetchOrders();
 
-            return response.data; // Возвращаем ответ от PATCH (если он нужен вызывающей стороне)
+            return response.data; // Возвращаем ответ от PATCH
         } catch (err) {
             handleAxiosError(err, `Failed to update order ${serial}`);
             throw err; // Пробрасываем ошибку дальше
