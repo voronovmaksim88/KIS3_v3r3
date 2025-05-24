@@ -62,7 +62,7 @@ const {
   totalOrders,
   currentPage,
   totalPages,
-  currentOrderDetail,
+  currentOrder,
   isDetailLoading,
 } = storeToRefs(ordersStore);
 
@@ -1132,7 +1132,7 @@ watch(
           <OrderDetails
               v-if="expandedOrderSerial === order.serial"
               :order-serial="order.serial"
-              :order-detail="currentOrderDetail"
+              :order-detail="currentOrder"
               :is-detail-loading="isDetailLoading"
               :theme="currentTheme"
               :details-container-class="detailsContainerClass"

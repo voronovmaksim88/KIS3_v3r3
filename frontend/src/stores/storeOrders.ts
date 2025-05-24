@@ -7,7 +7,6 @@ import {
     typeOrderSerial,
     typeOrderRead,
     typePaginatedOrderResponse,
-    // typeFetchOrdersParams,
     typeOrderDetail,
     typeOrderCreate,
     typeOrderEdit
@@ -21,15 +20,16 @@ export const useOrdersStore = defineStore('orders', () => {
     const orderSerials = ref<typeOrderSerial[]>([]); // Список только серийных номеров (если нужен)
     const orders = ref<typeOrderRead[]>([]);         // Полные данные заказов для текущей страницы
     const totalOrders = ref<number>(0);             // Общее количество заказов для пагинации
-    const currentOrderDetail = ref<typeOrderDetail | null>(null); // Детали выбранного заказа
+    const currentOrder = ref<typeOrderDetail | null>(null); // Детали выбранного заказа
     const newOrderSerial = ref<string>('');             // Сгенерированный серийный номер для нового заказа
     const error = ref<string | null>(null);             // Общая ошибка стора (можно разделить при необходимости)
 
     // --- Флаги загрузки ---
-    const loading = ref(false);                   // Основной флаг загрузки (для fetchOrders, create, update)
-    const detailLoading = ref(false);             // Флаг загрузки деталей заказа (fetchOrderDetail)
-    const newSerialLoading = ref(false);          // Загрузка нового серийного номера
-    const serialsLoading = ref(false);            // Загрузка списка серийных номеров (fetchOrderSerials)
+    const isLoading = ref(false);                   // Основной флаг загрузки (для fetchOrders, create, update)
+    const isDeadlineLoading = ref(false);         // Флаг обновления дедлайна по заказу
+    const isDetailLoading = ref(false);             // Флаг загрузки деталей заказа (fetchOrderDetail)
+    const isNewSerialLoading = ref(false);          // Загрузка нового серийного номера
+    const isSerialsLoading = ref(false);            // Загрузка списка серийных номеров (fetchOrderSerials)
 
     // === Словарь статусов заказов ===
     const orderStatuses = {
@@ -63,7 +63,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // fetchOrders теперь читает параметры отображения из storeOrdersTable
     const fetchOrders = async () => {
-        loading.value = true;
+        isLoading.value = true;
         error.value = null;
 
         const ordersTableStore = useOrdersTableStore();
@@ -97,31 +97,31 @@ export const useOrdersStore = defineStore('orders', () => {
             orders.value = [];
             totalOrders.value = 0;
         } finally {
-            loading.value = false;
+            isLoading.value = false;
         }
     };
 
     // Получение всех данных об одном заказе
     const fetchOrderDetail = async (serial: string) => {
-        detailLoading.value = true; // Используем флаг деталей
+        isDetailLoading.value = true; // Используем флаг деталей
         error.value = null;
-        currentOrderDetail.value = null;
+        currentOrder.value = null;
         try {
             const response = await axios.get<typeOrderDetail>(`${getApiUrl()}order/detail/${serial}`, {
                 withCredentials: true
             });
-            currentOrderDetail.value = response.data;
+            currentOrder.value = response.data;
         } catch (err) {
             handleAxiosError(err, `Failed to fetch order details for ${serial}`);
-            currentOrderDetail.value = null;
+            currentOrder.value = null;
         } finally {
-            detailLoading.value = false; // Сбрасываем флаг деталей
+            isDetailLoading.value = false; // Сбрасываем флаг деталей
         }
     };
 
     // Получение нового серийного номера для создания заказа
     const fetchNewOrderSerial = async () => {
-        newSerialLoading.value = true; // Устанавливаем НОВЫЙ флаг
+        isNewSerialLoading.value = true; // Устанавливаем НОВЫЙ флаг
         error.value = null;
         newOrderSerial.value = '';
 
@@ -136,13 +136,13 @@ export const useOrdersStore = defineStore('orders', () => {
             handleAxiosError(err, 'Failed to fetch new order serial');
             return '';
         } finally {
-            newSerialLoading.value = false; // Сбрасываем НОВЫЙ флаг
+            isNewSerialLoading.value = false; // Сбрасываем НОВЫЙ флаг
         }
     };
 
     // Получение только серийных номеров (если еще используется)
     const fetchOrderSerials = async (statusId: number | null = null) => {
-        serialsLoading.value = true; // Устанавливаем НОВЫЙ флаг
+        isSerialsLoading.value = true; // Устанавливаем НОВЫЙ флаг
         error.value = null;
         orderSerials.value = []; // Сбрасываем перед запросом
 
@@ -160,18 +160,17 @@ export const useOrdersStore = defineStore('orders', () => {
             handleAxiosError(err, 'Failed to fetch order serials');
             orderSerials.value = []; // Убедимся, что сброшено при ошибке
         } finally {
-            serialsLoading.value = false; // Сбрасываем НОВЫЙ флаг
+            isSerialsLoading.value = false; // Сбрасываем НОВЫЙ флаг
         }
     };
 
-    // setFilterStatus удален, логика перенесена в storeOrdersTable.ts
-    // Компонент должен вызвать storeOrdersTable.setFilterStatus()
-    // а затем ordersStore.fetchOrders()
+
+
 
     // --- Действия связанные с изменением данных (CRUD) ---
 
     const createOrder = async (orderData: typeOrderCreate): Promise<typeOrderRead | null> => {
-        loading.value = true; // Используем основной флаг
+        isLoading.value = true; // Используем основной флаг
         error.value = null;
         try {
             const response = await axios.post<typeOrderRead>(
@@ -185,12 +184,15 @@ export const useOrdersStore = defineStore('orders', () => {
             handleAxiosError(err, 'Failed to create order');
             throw err;
         } finally {
-            loading.value = false; // Сбрасываем основной флаг
+            isLoading.value = false; // Сбрасываем основной флаг
         }
     };
 
     const updateOrder = async (serial: string, orderData: typeOrderEdit): Promise<typeOrderRead | null> => {
-        loading.value = true;
+        if (orderData.deadline_moment != null) {
+            isDeadlineLoading.value = true;
+        }
+        isLoading.value = true;
         error.value = null;
         try {
             const response = await axios.patch<typeOrderRead>( // Ответ от PATCH все еще typeOrderRead
@@ -198,7 +200,7 @@ export const useOrdersStore = defineStore('orders', () => {
             );
 
             // Если текущий открытый заказ - это тот, что мы обновили, перезапрашиваем его детали
-            if (currentOrderDetail.value?.serial === serial) {
+            if (currentOrder.value?.serial === serial) {
                 await fetchOrderDetail(serial); // <--- Запрашиваем полные детали заново
             }
 
@@ -211,36 +213,32 @@ export const useOrdersStore = defineStore('orders', () => {
             handleAxiosError(err, `Failed to update order ${serial}`);
             throw err; // Пробрасываем ошибку дальше
         } finally {
-            loading.value = false;
+            isLoading.value = false;
+            isDeadlineLoading.value = false;
         }
     };
 
+
     const resetOrderDetail = () => {
-        currentOrderDetail.value = null;
-        detailLoading.value = false;
+        currentOrder.value = null;
+        isDetailLoading.value = false;
     };
+
 
     // resetOrders теперь сбрасывает только данные заказов, НЕ состояние таблицы
     const resetOrders = () => {
         orders.value = [];
         totalOrders.value = 0;
-        // Состояние таблицы (limit, skip, sort, filter) сбрасывается через storeOrdersTable
-        // Например, Component -> storeOrdersTable.resetTableState()
-        // console.log("Order data reset (orders, totalOrders)"); // Optional log
     };
 
     const resetOrderSerials = () => {
         orderSerials.value = [];
-        serialsLoading.value = false; // Сбрасываем и флаг загрузки
+        isSerialsLoading.value = false; // Сбрасываем и флаг загрузки
     };
 
 
     // === Вычисляемые свойства (Computed/Getters) ===
-    const isLoading = computed(() => loading.value); // Основная загрузка
-    const isDetailLoading = computed(() => detailLoading.value); // Загрузка деталей
-    const isNewSerialLoading = computed(() => newSerialLoading.value); // Загрузка нового номера
-    const isSerialsLoading = computed(() => serialsLoading.value); // Загрузка списка номеров
-    const hasOrderDetail = computed(() => currentOrderDetail.value !== null);
+    const hasOrderDetail = computed(() => currentOrder.value !== null);
 
     // Вычисляемые свойства для пагинации теперь зависят от storeOrdersTable
     const currentPage = computed(() => {
@@ -257,34 +255,31 @@ export const useOrdersStore = defineStore('orders', () => {
 
     // === Возвращаем все элементы стора ===
     return {
-        // Состояния (State)
-        orders, totalOrders, currentOrderDetail,
-        newOrderSerial, orderSerials,
+        // --- Состояния (State) ---
+        orders,       // Полные данные заказов
+        totalOrders,
+        currentOrder, // Детали текущего выбранного заказа
+        newOrderSerial,
+        orderSerials,
         error,
 
         // --- Флаги загрузки ---
-        loading,          // Основной
-        detailLoading,    // Детали
-        newSerialLoading, //
-        isNewSerialLoading, // computed getter for newSerialLoading
-        serialsLoading,   //
-        isSerialsLoading, // computed getter for serialsLoading
+        isLoading,          // Основной
+        isDetailLoading,    // Детали
+        isNewSerialLoading, //
+        isSerialsLoading,   //
+        isDeadlineLoading,  // флаг обновления дедлайна
 
-
-        // Действия (Actions)
+        // --- Действия (Actions) ---
         fetchOrders, fetchOrderDetail, fetchNewOrderSerial, fetchOrderSerials,
         createOrder, updateOrder, clearError, getStatusText,
         resetOrders, resetOrderDetail, resetOrderSerials,
-        // setFilterStatus, setSortField, resetSorting - удалены, их логика в storeOrdersTable
 
-        // Вычисляемые свойства (Getters/Computed)
-        isLoading,          // Основной флаг загрузки
-        isDetailLoading,    // Детали
+        // --- Вычисляемые свойства (Getters/Computed) ---
         hasOrderDetail,
         currentPage, // Теперь зависит от storeOrdersTable
         totalPages,  // Теперь зависит от storeOrdersTable
         serialsCount,
 
-        // currentFilterStatus, currentLimit, etc. - теперь доступны через useOrdersTableStore() в компонентах
     };
 });

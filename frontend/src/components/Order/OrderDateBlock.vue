@@ -28,8 +28,8 @@ const toast = useToast();
 
 // Переменная для хранения даты дедлайна
 const tempDeadline = ref<Date | null>(
-    ordersStore.currentOrderDetail?.deadline_moment
-        ? new Date(ordersStore.currentOrderDetail.deadline_moment)
+    ordersStore.currentOrder?.deadline_moment
+        ? new Date(ordersStore.currentOrder.deadline_moment)
         : null
 );
 if (tempDeadline.value) {
@@ -38,7 +38,7 @@ if (tempDeadline.value) {
 
 // Синхронизация tempDeadline с currentOrderDetail.deadline_moment
 watch(
-    () => ordersStore.currentOrderDetail?.deadline_moment,
+    () => ordersStore.currentOrder?.deadline_moment,
     (newDeadline) => {
       tempDeadline.value = newDeadline ? new Date(newDeadline) : null;
       if (tempDeadline.value) {
@@ -50,7 +50,7 @@ watch(
 
 // Функция для сохранения изменений в БД
 const saveDeadline = async (newValue: Date | null) => {
-  if (!ordersStore.currentOrderDetail?.serial) {
+  if (!ordersStore.currentOrder?.serial) {
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
@@ -73,7 +73,7 @@ const saveDeadline = async (newValue: Date | null) => {
     };
 
     // Вызываем метод обновления из хранилища
-    await ordersStore.updateOrder(ordersStore.currentOrderDetail.serial, orderData);
+    await ordersStore.updateOrder(ordersStore.currentOrder.serial, orderData);
 
     // Эмитим событие для родительского компонента (если нужно)
     emit('updateDeadline', newValue ? newValue.toISOString() : null);
@@ -223,9 +223,9 @@ function formatRelativeTimeDetailed(diff: DateDifference): string {
 
 // Вычисляемые свойства для времени
 const timeSinceCreation = computed((): DateDifference | null => {
-  if (!ordersStore.currentOrderDetail?.start_moment) return null;
+  if (!ordersStore.currentOrder?.start_moment) return null;
   try {
-    const startDate = new Date(ordersStore.currentOrderDetail.start_moment);
+    const startDate = new Date(ordersStore.currentOrder.start_moment);
     const now = new Date();
     if (isNaN(startDate.getTime())) return null;
     return calculateDateDifference(startDate, now);
@@ -235,9 +235,9 @@ const timeSinceCreation = computed((): DateDifference | null => {
 });
 
 const timeUntilDeadline = computed((): DateDifference | null => {
-  if (!ordersStore.currentOrderDetail?.deadline_moment) return null;
+  if (!ordersStore.currentOrder?.deadline_moment) return null;
   try {
-    const deadlineDate = new Date(ordersStore.currentOrderDetail.deadline_moment);
+    const deadlineDate = new Date(ordersStore.currentOrder.deadline_moment);
     const now = new Date();
     if (isNaN(deadlineDate.getTime())) return null;
     return calculateDateDifference(now, deadlineDate);
@@ -247,9 +247,9 @@ const timeUntilDeadline = computed((): DateDifference | null => {
 });
 
 const timeSinceCompletion = computed((): DateDifference | null => {
-  if (!ordersStore.currentOrderDetail?.end_moment) return null;
+  if (!ordersStore.currentOrder?.end_moment) return null;
   try {
-    const endDate = new Date(ordersStore.currentOrderDetail.end_moment);
+    const endDate = new Date(ordersStore.currentOrder.end_moment);
     const now = new Date();
     if (isNaN(endDate.getTime())) return null;
     return calculateDateDifference(endDate, now);
@@ -265,7 +265,7 @@ const isDeadlineOverdue = computed(() => {
 });
 
 // Состояние загрузки из хранилища
-const isLoading = computed(() => ordersStore.isLoading);
+// const isLoading = computed(() => ordersStore.isLoading);
 
 // Классы для основных блоков внутри деталей (Комментарии, Даты, Финансы, Задачи)
 const detailBlockClass = computed(() => {
@@ -296,7 +296,7 @@ const detailHeaderClass = computed(() => {
           создан:
         </td>
         <td :class="tdBaseTextClass" class="text-left align-top">
-          {{ formatLocalDateTime(ordersStore.currentOrderDetail?.start_moment, false) || 'не определено' }}
+          {{ formatLocalDateTime(ordersStore.currentOrder?.start_moment, false) || 'не определено' }}
         </td>
         <td
             v-if="timeSinceCreation && (timeSinceCreation.years > 0 || timeSinceCreation.months > 0 || timeSinceCreation.days > 0)"
@@ -312,7 +312,7 @@ const detailHeaderClass = computed(() => {
           дедлайн:
         </td>
         <td :class="[tdBaseTextClass, 'text-left align-top']">
-          <div class="relative" v-if="ordersStore.currentOrderDetail?.serial">
+          <div class="relative" v-if="ordersStore.currentOrder?.serial">
             <DatePicker
                 v-model="tempDeadline"
                 dateFormat="dd.mm.yy"
@@ -320,10 +320,10 @@ const detailHeaderClass = computed(() => {
                 :showIcon="true"
                 :minDate="today"
                 class="deadline-picker"
-                :disabled="isLoading"
+                :disabled="ordersStore.isDeadlineLoading"
                 @update:modelValue="handleDateUpdate"
             />
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
+            <div v-if="ordersStore.isDeadlineLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70">
               <i class="pi pi-spinner pi-spin text-blue-500"></i>
             </div>
           </div>
@@ -347,12 +347,12 @@ const detailHeaderClass = computed(() => {
         <td v-else class="w-px"></td>
       </tr>
 
-      <tr v-if="ordersStore.currentOrderDetail?.end_moment">
+      <tr v-if="ordersStore.currentOrder?.end_moment">
         <td :class="tdBaseTextClass" class="text-left pr-2 align-top">
           завершён:
         </td>
         <td :class="tdBaseTextClass" class="text-left align-top">
-          {{ formatLocalDateTime(ordersStore.currentOrderDetail?.end_moment, false) || 'не определено' }}
+          {{ formatLocalDateTime(ordersStore.currentOrder?.end_moment, false) || 'не определено' }}
         </td>
         <td
             v-if="timeSinceCompletion && (timeSinceCompletion.years > 0 || timeSinceCompletion.months > 0 || timeSinceCompletion.days > 0)"
