@@ -65,7 +65,7 @@ export const useOrdersTableStore = defineStore('ordersTable', () => {
 
     function resetTableState() {
         showEndedOrders.value = false;
-        currentLimit.value = 50;
+        currentLimit.value = 10;
         currentSkip.value = 0;
         // Убедимся, что дефолтные значения соответствуют типу OrderSortField
         currentSortField.value = 'serial';

@@ -30,6 +30,7 @@ import {useToast} from 'primevue/usetoast';
 import Button from "primevue/button";
 import {Checkbox} from "primevue";
 import MultiSelect from 'primevue/multiselect';
+import Paginator from 'primevue/paginator';
 
 
 // композитные компоненты
@@ -40,6 +41,10 @@ const {
   tableHeaderRowClass,
   trBaseClass,
 } = useTableStyles();
+
+// Вычисляемые свойства для пагинатора
+const first = computed(() => ordersTableStore.currentSkip);
+const last = computed(() => Math.min(ordersTableStore.currentSkip + ordersTableStore.currentLimit, ordersStore.totalOrders));
 
 // всплывающие уведомления
 const toast = useToast();
@@ -213,29 +218,19 @@ onMounted(() => {
 
 });
 
-// Функции для пагинации (вызывают setSkip в ordersTableStore)
-const goToPreviousPage = () => {
-  if (currentPage.value > 0) {
-    const newSkip = currentSkip.value - currentLimit.value;
-    setSkip(newSkip); // Обновляем skip в ordersTableStore
-    // Watcher отловит изменение currentSkip и вызовет fetchOrders()
-  }
-};
-
-const goToNextPage = () => {
-  if (currentPage.value < totalPages.value - 1) {
-    const newSkip = currentSkip.value + currentLimit.value;
-    setSkip(newSkip); // Обновляем skip в ordersTableStore
-    // Watcher отловит изменение currentSkip и вызовет fetchOrders()
-  }
-};
-
 // Обработчик изменения лимита на странице
-const handleLimitChange = (limit: number) => {
-  setLimit(limit); // Обновляем limit в ordersTableStore
-  setSkip(0); // Сбрасываем на первую страницу при смене лимита
-  // Watcher отловит изменения и вызовет fetchOrders()
-}
+const handleLimitChange = (newLimit: number) => {
+  ordersTableStore.setLimit(newLimit);
+  ordersTableStore.setSkip(0); // Сбрасываем на первую страницу
+  fetchOrders();
+};
+
+const handlePageChange = (newSkip: number) => {
+  ordersTableStore.setSkip(newSkip);
+  currentSkip.value = newSkip;
+  fetchOrders();
+  // обновит наблюдатель
+};
 
 // Обработчик изменения сортировки
 const handleSortClick = (field: OrderSortField, event: MouseEvent) => {
@@ -284,26 +279,6 @@ const detailHeaderClass = computed(() => {
   return currentTheme.value === 'dark'
       ? `${base} text-white`
       : `${base} text-gray-800`;
-});
-
-// Классы для кнопок пагинации
-const paginationButtonClass = computed(() => {
-  const base = 'px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300';
-  return currentTheme.value === 'dark'
-      ? `${base} bg-blue-600 hover:bg-blue-500 text-white`
-      : `${base} bg-blue-500 hover:bg-blue-600 text-white`;
-});
-
-// Классы для текста пагинации
-const paginationTextClass = computed(() => {
-  const base = 'text-lg transition-colors duration-300';
-  return currentTheme.value === 'dark' ? `${base} text-gray-300` : `${base} text-gray-700`;
-});
-
-// Классы для текста "Показано N из M заказов"
-const totalInfoTextClass = computed(() => {
-  const base = 'text-center mt-2 text-sm transition-colors duration-300';
-  return currentTheme.value === 'dark' ? `${base} text-gray-400` : `${base} text-gray-500`;
 });
 
 // Классы для основного контейнера компонента
@@ -1159,29 +1134,27 @@ watch(
       </table>
 
 
-      <div v-if="totalPages > 1" class="mt-6 flex justify-center items-center space-x-3">
-        <button
-            @click="goToPreviousPage"
-            :disabled="currentPage === 0"
-            :class="paginationButtonClass"
-        >
-          Назад
-        </button>
-        <span :class="paginationTextClass">
-          Страница {{ currentPage + 1 }} из {{ totalPages }}
-        </span>
-        <button
-            @click="goToNextPage"
-            :disabled="currentPage >= totalPages - 1"
-            :class="paginationButtonClass"
-        >
-          Вперед
-        </button>
+      <!--  Пагинация  -->
+      <div v-if="totalOrders > 0" class="mt-6 flex flex-col items-center space-y-2">
+        <Paginator
+            :rows="ordersTableStore.currentLimit"
+            :totalRecords="ordersStore.totalOrders"
+            :rowsPerPageOptions="[10, 20, 50, 100]"
+
+            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            :class="[
+              'p-paginator',
+              currentTheme === 'light' ? 'bg-gray-100 text-gray-700' : 'bg-gray-700 text-gray-300'
+            ]"
+            @update:first="handlePageChange($event)"
+            @update:rows="handleLimitChange($event)"
+        />
+        <div class="flex flex-col items-center text-sm">
+          <span class="hidden sm:block text-gray-500">Показано {{ first + 1 }} to {{ last }} of {{ ordersStore.totalOrders }}</span>
+          <span class="block sm:hidden text-gray-500">Page {{ currentPage + 1 }} of {{ totalPages }}</span>
+        </div>
       </div>
 
-      <div v-if="!isLoading && orders.length > 0" :class="totalInfoTextClass">
-        Показано {{ orders.length }} из {{ totalOrders }} заказов.
-      </div>
     </div>
   </div>
 
