@@ -51,17 +51,17 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // Вспомогательная функция для обновления currentOrderDetail.tasks
     const updateOrderDetailTask = (updatedTask: typeTask) => {
-        if (!ordersStore.currentOrderDetail?.tasks) {
+        if (!ordersStore.currentOrder?.tasks) {
             return; // Если currentOrderDetail или tasks не существуют, выходим
         }
 
-        const taskIndex = ordersStore.currentOrderDetail.tasks.findIndex(
+        const taskIndex = ordersStore.currentOrder.tasks.findIndex(
             task => task.id === updatedTask.id
         );
 
         if (taskIndex !== -1) {
             // Обновляем задачу в массиве tasks, сохраняя реактивность
-            ordersStore.currentOrderDetail.tasks[taskIndex] = { ...updatedTask };
+            ordersStore.currentOrder.tasks[taskIndex] = { ...updatedTask };
             console.log(`Updated task ${updatedTask.id} in currentOrderDetail.tasks`);
         }
     };

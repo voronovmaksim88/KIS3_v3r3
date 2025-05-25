@@ -182,8 +182,6 @@ const toggleOrderDetails = async (serial: string) => {
 // Теперь один watcher отслеживает все параметры, которые влияют на запрос
 watch(
     [
-      currentLimit,
-      currentSkip,
       currentSortField,
       currentSortDirection,
       currentFilterStatus,
@@ -220,8 +218,8 @@ onMounted(() => {
 
 // Обработчик изменения лимита на странице
 const handleLimitChange = (newLimit: number) => {
-  ordersTableStore.setLimit(newLimit);
-  ordersTableStore.setSkip(0); // Сбрасываем на первую страницу
+  setLimit(newLimit);
+  setSkip(0); // Сбрасываем на первую страницу
   fetchOrders();
 };
 
