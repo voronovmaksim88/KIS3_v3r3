@@ -65,8 +65,6 @@ const {
   isLoading,
   error,
   totalOrders,
-  currentPage,
-  totalPages,
   currentOrder,
   isDetailLoading,
 } = storeToRefs(ordersStore);
@@ -182,6 +180,8 @@ const toggleOrderDetails = async (serial: string) => {
 // Теперь один watcher отслеживает все параметры, которые влияют на запрос
 watch(
     [
+      currentLimit,
+      currentSkip,
       currentSortField,
       currentSortDirection,
       currentFilterStatus,
@@ -218,16 +218,24 @@ onMounted(() => {
 
 // Обработчик изменения лимита на странице
 const handleLimitChange = (newLimit: number) => {
+  if (newLimit === ordersTableStore.currentLimit) {
+    console.log('Limit unchanged, ignoring', { newLimit });
+    return;
+  }
+  console.log('Limit changed to', newLimit);
   setLimit(newLimit);
   setSkip(0); // Сбрасываем на первую страницу
-  fetchOrders();
+
 };
 
 const handlePageChange = (newSkip: number) => {
+  if (newSkip === ordersTableStore.currentSkip) {
+    console.log('Skip unchanged, ignoring', { newSkip });
+    return;
+  }
+  console.log('Skip changed to', newSkip);
   ordersTableStore.setSkip(newSkip);
-  currentSkip.value = newSkip;
-  fetchOrders();
-  // обновит наблюдатель
+
 };
 
 // Обработчик изменения сортировки
@@ -556,14 +564,6 @@ const handleResetTableAndData = () => {
   fetchOrders();
 }
 
-// Опции для выбора лимита на странице
-const limitOptions = [
-  {label: '10', value: 10},
-  {label: '25', value: 25},
-  {label: '50', value: 50},
-  {label: '100', value: 100},
-];
-
 
 const handleWorksSearchChange = () => {
   ordersTableStore.setSearchWorks(searchWorks.value);
@@ -571,6 +571,16 @@ const handleWorksSearchChange = () => {
   // Запрос будет вызван через watch с дебаунсингом
 };
 
+// Вычисляемые свойства для подписи пагинации теперь зависят от storeOrdersTable
+const currentPage = computed(() => {
+  const ordersTableStore = useOrdersTableStore();
+  return ordersTableStore.currentLimit > 0 ? Math.floor(ordersTableStore.currentSkip / ordersTableStore.currentLimit) : 0;
+});
+
+const totalPages = computed(() => {
+  const ordersTableStore = useOrdersTableStore();
+  return ordersTableStore.currentLimit > 0 ? Math.ceil(totalOrders.value / ordersTableStore.currentLimit) : 0;
+});
 
 // наблюдатель, который будет обновлять noPriority на основе значения searchPriority:
 watch(
@@ -715,17 +725,6 @@ watch(
                 />
               </div>
 
-
-              <!--переключатель количества строк таблицы-->
-              <Select
-                  v-model="currentLimit"
-                  :options="limitOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  @change="handleLimitChange(currentLimit)"
-                  class="w-24 text-sm"
-              />
-
               <Button
                   @click="handleResetTableAndData"
                   label="Сброс"
@@ -734,7 +733,6 @@ watch(
                   class="text-sm"
               />
               </div>
-
 
               <span class="flex">
                 <Button
@@ -1138,7 +1136,7 @@ watch(
             :rows="ordersTableStore.currentLimit"
             :totalRecords="ordersStore.totalOrders"
             :rowsPerPageOptions="[10, 20, 50, 100]"
-
+            :first="ordersTableStore.currentSkip"
             template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             :class="[
               'p-paginator',

@@ -254,17 +254,6 @@ export const useOrdersStore = defineStore('orders', () => {
     // === Вычисляемые свойства (Computed/Getters) ===
     const hasOrderDetail = computed(() => currentOrder.value !== null);
 
-    // Вычисляемые свойства для пагинации теперь зависят от storeOrdersTable
-    const currentPage = computed(() => {
-        const ordersTableStore = useOrdersTableStore();
-        return ordersTableStore.currentLimit > 0 ? Math.floor(ordersTableStore.currentSkip / ordersTableStore.currentLimit) : 0;
-    });
-
-    const totalPages = computed(() => {
-        const ordersTableStore = useOrdersTableStore();
-        return ordersTableStore.currentLimit > 0 ? Math.ceil(totalOrders.value / ordersTableStore.currentLimit) : 0;
-    });
-
     const serialsCount = computed(() => orderSerials.value.length); // Если используется
 
     // === Возвращаем все элементы стора ===
@@ -292,8 +281,6 @@ export const useOrdersStore = defineStore('orders', () => {
 
         // --- Вычисляемые свойства (Getters/Computed) ---
         hasOrderDetail,
-        currentPage, // Теперь зависит от storeOrdersTable
-        totalPages,  // Теперь зависит от storeOrdersTable
         serialsCount,
 
     };

@@ -7,7 +7,7 @@ import { OrderSortField, OrderSortDirection } from '@/types/typeOrder';
 export const useOrdersTableStore = defineStore('ordersTable', () => {
     // Состояние для отображения завершенных заказов
     const showEndedOrders = ref(false); // По умолчанию скрываем завершённые заказы
-    const currentLimit = ref(50);
+    const currentLimit = ref(50); //
     const currentSkip = ref(0);
 
     // Указываем типы для полей и направлений сортировки, используя импортированные типы
